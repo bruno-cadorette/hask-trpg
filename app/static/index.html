@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
+        crossorigin="" />
+    <script src="api.js" />
+    <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js" integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg=="
+        crossorigin=""></script>
+    <style>
+        .county {
+            border: solid;
+            height: 20px;
+            width: 20px;
+        }
+
+        div[data-faction='0'] {
+            background-color: lightyellow
+        }
+
+        div[data-faction='1'] {
+            background-color: greenyellow
+        }
+
+        div[data-faction='2'] {
+            background-color: cornflowerblue
+        }
+
+        .selected {
+            background-color: red
+        }
+
+        .inacessible {
+            filter: brightness(40%);
+        }
+    </style>
+
+</head>
+
+<body>
+    <table id="game">
+    </table>
+    <div>Actions:<ul id="actions"></ul>
+    <button onclick="commit()">Commit</button></div>
+    <div>Money: <label id="money">0</label></div>
+    <script>
+        var selection = undefined
+
+
+        const player = 1
+        var borders = {};
+        var countiesInfo = {}
+        var turnActions = []
+
+
+        function selectCounty(newElem) {
+            if (selection) {
+                selection.classList.remove("selected");
+            }
+
+            if (selection && selection.id === newElem.id) {
+                cancelSelection();
+            }
+            else if (selection && areNeighboor(selection.id, newElem.id)) {
+                move(selection.id, newElem.id)
+                cancelSelection();
+            }
+            else {
+                newElem.classList.add("selected");
+
+                selection = newElem
+                deactivateNonSelectionable(newElem.id)
+            }
+        }
+
+        function move(id1, id2) {
+            if (countiesInfo[id1].faction != player) {
+                alert("You can't move thoses troops because it belong to another faction")
+                return
+            }
+            let migratingPopulation = prompt("How much troop do you want to move? (origin: " + countiesInfo[id1].population + "), destination: " + countiesInfo[id2].population + ")")
+            if (!migratingPopulation) {
+                return
+            }
+            if (migratingPopulation > countiesInfo[id1].population) {
+                move(id1, id2)
+            }
+            else {
+                addAction({ origin: id1, destination: id2, troops: +migratingPopulation })
+            }
+        }
+        function addAction(action){
+            turnActions.push(action);
+            let li = document.createElement("li");
+            li.innerText = action.actionType
+
+            document.getElementById("actions").appendChild(li)
+        }
+
+        function areNeighboor(id1, id2) {
+            return borders[id1].includes(id2)
+        }
+
+        function cancelSelection() {
+            let allCounty = document.getElementsByClassName("county")
+            for (var i = 0; i < allCounty.length; i++) {
+                allCounty[i].classList.remove("inacessible")
+            }
+            selection = undefined
+        }
+
+        function commit(){
+            console.log(turnActions)
+            postGameState(turnActions, g =>{
+                countiesInfo = g
+                turnActions = []
+                document.getElementById("actions").innerHTML = ""
+                updateMap()
+            },console.log);
+        }
+        function getPositionFromId(id) {
+            return id.split("_")
+        }
+        function deactivateNonSelectionable(id) {
+            let neighboors = borders[id];
+
+            let allCounty = document.getElementsByClassName("county")
+
+            for (var i = 0; i < allCounty.length; i++) {
+                if (neighboors.includes(allCounty[i].id)) {
+                    allCounty[i].classList.remove("inacessible")
+                }
+                else {
+                    allCounty[i].classList.add("inacessible")
+                }
+            }
+        }
+
+        function drawMap() {
+            const game = document.getElementById("game");
+            for (var i = 0; i < 15; i++) {
+                let row = document.createElement("tr");
+                for (var j = 0; j < 15; j++) {
+                    let td = document.createElement("td");
+
+                    let button = document.createElement("div")
+
+                    button.classList.add("county")
+                    button.onclick = ev => {
+                        selectCounty(ev.target)
+                        console.log(ev.target.id)
+                    }
+                    button.id = i + "_" + j
+                    td.appendChild(button);
+                    row.appendChild(td)
+                }
+                game.appendChild(row);
+            }
+        }
+
+        function updateMap() {
+            
+            console.log(countiesInfo)
+            let allCounty = document.getElementsByClassName("county")
+            for (var i = 0; i < allCounty.length; i++) {
+                var info = countiesInfo[allCounty[i].id]
+                allCounty[i].dataset.faction = info.faction;
+                allCounty[i].innerHTML = info.population;
+            }
+        }
+
+        function init(callback){
+            getBorders(b => {
+                borders = b
+                getGameState(g => {
+                    countiesInfo = g
+                    drawMap();
+                    callback()
+                })
+            })
+        }
+        init(updateMap)
+    </script>
+</body>
+
+</html>
