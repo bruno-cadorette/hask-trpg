@@ -27,84 +27,80 @@ import Control.Concurrent.STM
 import Region
 import Servant.JS
 import Servant.JS.Vanilla
+import GameState
 
-data GameAction = Move {origin :: RegionId, destination :: RegionId, troops :: Integer} deriving(Generic, Show)
+newtype GameId = GameId Integer deriving (Num, Eq, Ord, Show, FromHttpApiData)
 
-instance FromJSON GameAction
-instance ToJSON GameAction
+data Game = Game { gameBorders :: Borders, gameMap :: GameMap}
 
-adjustGet :: Ord k => (a -> a) -> k -> Map k a -> (Maybe a, Map k a)
-adjustGet f k m = 
-    case Data.Map.lookup k m of
-        Just a  -> (Just a, Data.Map.insert k (f a) m)
-        Nothing -> (Nothing, m)
-
-move (Move originId destinationId troopsNumber) m = 
-    let (x, m') = adjustGet (\(RegionInfo f p) -> RegionInfo f (p - troopsNumber)) originId m
-    in maybe m' (\(RegionInfo f1 _) -> adjust (invasion f1 troopsNumber) destinationId m') x
-    
-invasion attackerFaction attackerTroops (RegionInfo defenderFaction defenderTroops)
-    | attackerFaction == defenderFaction =
-        RegionInfo defenderFaction (attackerTroops + defenderTroops)
-    | defenderTroops - attackerTroops < 0 =
-        RegionInfo attackerFaction (attackerTroops - defenderTroops)
-    | otherwise =
-        RegionInfo defenderFaction (defenderTroops - attackerTroops)
-
-reinforce = Data.Map.map (\(RegionInfo f p) -> RegionInfo f (if f == FactionId 0 then p else p + 1))
-
-
+type GameHub = Map GameId Game
 
 type FileApi = "static" :> Raw
 
-type MapApi = "borders" :> Get '[JSON] (Map RegionId [RegionId])
-
-type RiskyApi = GameStateApi :<|> MapApi
-
-type FullApi = FileApi :<|> RiskyApi
-
-type GameStateApi = "gameState" :> (Get '[JSON] GameMap :<|> (ReqBody '[JSON] [GameAction] :> Post '[JSON] GameMap))
-
-type RiskyT = ReaderT (TVar GameMap) IO
-
-updateGameState :: [GameAction] -> RiskyT GameMap
-updateGameState act = do
-    gameMap <- ask
-    m' <- lift $ atomically $ do
-        modifyTVar gameMap (\m -> reinforce $ Data.List.foldr move m act) 
-        readTVar gameMap
-    liftIO $ print (Data.Map.lookup "2_2" m', Data.Map.lookup "2_3" m')
-    return m'
+type FullApi = FileApi :<|> GameApi
 
 
-getGameState :: RiskyT GameMap
-getGameState = asks readTVarIO >>= lift
+type GameApi = 
+    "game" :> Capture "gameId" GameId :> (
+        "gameState" :> (
+            Get '[JSON] GameMap :<|>
+            ReqBody '[JSON] [GameAction] :> Post '[JSON] GameMap
+        ) :<|>
+        "borders" :> Get '[JSON] Borders
+    )
 
-gameStateApi :: ServerT GameStateApi RiskyT
-gameStateApi = getGameState :<|> updateGameState
+newtype RiskyT a = RiskyT {runRiskyT :: ReaderT (TVar GameHub) IO a }
+    deriving (Functor, Applicative, Monad, MonadIO, MonadReader (TVar GameHub))
+
+getGame :: GameId -> RiskyT Game
+getGame gameId = asks (fmap (fromJust . Data.Map.lookup gameId) . readTVarIO) >>= liftIO
+
+updateGameState :: GameId -> [GameAction] -> RiskyT GameMap
+updateGameState gameId act = do
+    gameHub <- ask
+    m' <- liftIO $ atomically $ do
+        modifyTVarGame gameHub gameId (\m -> m { gameMap = reinforce $ Data.List.foldr move (gameMap m) act }) 
+        gameMap <$> readTVarGame gameHub gameId
+        
+    return $ m'
+
+modifyTVarGame :: TVar GameHub -> GameId -> (Game -> Game) -> STM ()
+modifyTVarGame gameHub gameId f = modifyTVar gameHub (adjust f gameId)
+
+readTVarGame :: TVar GameHub -> GameId -> STM Game
+readTVarGame gameHub gameId = (fromJust . Data.Map.lookup gameId) <$> readTVar gameHub
 
 
-mapApi :: ServerT MapApi RiskyT
-mapApi = return (borders 15 15)
+getGameState :: GameId -> RiskyT GameMap
+getGameState = fmap gameMap . getGame
+
+mapBorders = fmap gameBorders . getGame
+
+gameApi :: ServerT GameApi RiskyT
+gameApi gameId = (getGameState gameId :<|> updateGameState gameId) :<|> mapBorders gameId
 
 riskyApi :: ServerT FullApi RiskyT
-riskyApi = serveStaticFiles :<|> gameStateApi :<|> mapApi  
+riskyApi = serveStaticFiles :<|> gameApi  
 
 riskyServer region = hoistServer (Proxy :: Proxy FullApi) (riskyTToHandler region) riskyApi
 
 writeJSFiles :: IO ()
-writeJSFiles = writeJSForAPI (Proxy :: Proxy RiskyApi) vanillaJS "/home/bruno/git/risky/app/static/api.js"
+writeJSFiles = writeJSForAPI (Proxy :: Proxy GameApi) vanillaJS "/home/bruno/git/risky/app/static/api.js"
 
 serveStaticFiles :: ServerT FileApi RiskyT
 serveStaticFiles = serveDirectoryWebApp "/home/bruno/git/risky/app/static"
 
-riskyTToHandler newRegion r = liftIO $ runReaderT r newRegion
+riskyTToHandler :: TVar GameHub -> RiskyT a -> Handler a
+riskyTToHandler newRegion r = liftIO $ runReaderT (runRiskyT r) newRegion
 
 app region = serve (Proxy :: Proxy FullApi) (riskyServer region)
 
+
+initGame = Game (borders 15 15) (baseRegions 15 15)
+
 main :: IO ()
 main = do
-    newRegion <- newTVarIO $ baseRegions 15 15
+    newGame <- newTVarIO $ Data.Map.fromList [(1, initGame)]
     writeJSFiles
-    run 8081 (app newRegion)
+    run 8081 (app newGame)
 

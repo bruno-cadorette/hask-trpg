@@ -47,7 +47,7 @@
     <script>
         var selection = undefined
 
-
+        const gameId = 1
         const player = 1
         var borders = {};
         var countiesInfo = {}
@@ -93,7 +93,7 @@
         function addAction(action){
             turnActions.push(action);
             let li = document.createElement("li");
-            li.innerText = action.actionType
+            li.innerText = action.origin + " -> " + action.destination + " with " + action.troops + " troops"
 
             document.getElementById("actions").appendChild(li)
         }
@@ -112,7 +112,7 @@
 
         function commit(){
             console.log(turnActions)
-            postGameState(turnActions, g =>{
+            postGameByGameIdGameState(gameId, turnActions, g =>{
                 countiesInfo = g
                 turnActions = []
                 document.getElementById("actions").innerHTML = ""
@@ -171,9 +171,9 @@
         }
 
         function init(callback){
-            getBorders(b => {
+            getGameByGameIdBorders(gameId, b => {
                 borders = b
-                getGameState(g => {
+                getGameByGameIdGameState(gameId, g => {
                     countiesInfo = g
                     drawMap();
                     callback()

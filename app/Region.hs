@@ -1,29 +1,27 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Region where
 
 import Data.Aeson
 import Data.Map 
 import GHC.Generics
 
-type RegionId = String
-newtype FactionId = FactionId Integer deriving (Generic, Show, Eq, Ord)
-
-instance FromJSON FactionId
-instance ToJSON FactionId
-
+newtype RegionId = RegionId String deriving (Show, Eq, Ord, FromJSON, ToJSON, ToJSONKey, FromJSONKey)
+newtype Borders = Borders (Map RegionId [RegionId]) deriving (FromJSON, ToJSON)
+newtype FactionId = FactionId Integer deriving (Show, Eq, Ord, FromJSON, ToJSON)
 
 data RegionInfo = RegionInfo {faction :: FactionId, population :: Integer} deriving(Generic, Show)
-type GameMap = Map RegionId RegionInfo
+newtype GameMap = GameMap { gameMapToMap :: (Map RegionId RegionInfo) } deriving (FromJSON, ToJSON) 
 
 instance FromJSON RegionInfo
 instance ToJSON RegionInfo
 
 baseRegions :: Int -> Int -> GameMap
-baseRegions x y = fromList $ fmap (\id -> (id, RegionInfo (getFaction id) 2)) $ allRegionRegionId mkRegionId x y
+baseRegions x y = GameMap $ fromList $ fmap (\id -> (id, RegionInfo (getFaction id) 2)) $ allRegionRegionId mkRegionId x y
 
-
-getFaction "2_2" = FactionId 1
-getFaction "6_8" = FactionId 2
+getFaction :: RegionId -> FactionId
+getFaction (RegionId "2_2") = FactionId 1
+getFaction (RegionId "6_8") = FactionId 2
 getFaction _     = FactionId 0
 
 allRegionRegionId f x y = do
@@ -31,7 +29,8 @@ allRegionRegionId f x y = do
     fmap (f x') [0..y]
 
 
-mkRegionId x y = show x ++ "_" ++ show y
+mkRegionId :: Int -> Int -> RegionId
+mkRegionId x y = RegionId $ show x ++ "_" ++ show y
 
 neighboor maxX maxY (x, y) = (mkRegionId x y , allNeighboor)
     where
@@ -42,5 +41,5 @@ neighboor maxX maxY (x, y) = (mkRegionId x y , allNeighboor)
  
 
 
-borders :: Int -> Int -> Map RegionId [RegionId]
-borders x y = fromList $ fmap (neighboor x y) $ allRegionRegionId (,) x y
+borders :: Int -> Int -> Borders
+borders x y = Borders $ fromList $ fmap (neighboor x y) $ allRegionRegionId (,) x y

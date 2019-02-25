@@ -1,7 +1,7 @@
 
-var getGameState = function(onSuccess, onError) {
+var getGameByGameIdGameState = function(gameId, onSuccess, onError) {
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', '/gameState', true);
+  xhr.open('GET', '/game/' + encodeURIComponent(gameId) + '/gameState', true);
   xhr.setRequestHeader('Accept', 'application/json');
   xhr.onreadystatechange = function () {
     var res = null;
@@ -20,9 +20,9 @@ var getGameState = function(onSuccess, onError) {
   xhr.send(null);
 };
 
-var postGameState = function(body, onSuccess, onError) {
+var postGameByGameIdGameState = function(gameId, body, onSuccess, onError) {
   var xhr = new XMLHttpRequest();
-  xhr.open('POST', '/gameState', true);
+  xhr.open('POST', '/game/' + encodeURIComponent(gameId) + '/gameState', true);
   xhr.setRequestHeader('Accept', 'application/json');
   xhr.setRequestHeader('Content-Type', 'application/json');
   xhr.onreadystatechange = function () {
@@ -42,9 +42,9 @@ var postGameState = function(body, onSuccess, onError) {
   xhr.send(JSON.stringify(body));
 };
 
-var getBorders = function(onSuccess, onError) {
+var getGameByGameIdBorders = function(gameId, onSuccess, onError) {
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', '/borders', true);
+  xhr.open('GET', '/game/' + encodeURIComponent(gameId) + '/borders', true);
   xhr.setRequestHeader('Accept', 'application/json');
   xhr.onreadystatechange = function () {
     var res = null;
