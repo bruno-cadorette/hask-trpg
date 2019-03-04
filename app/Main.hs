@@ -11,13 +11,16 @@
 module Main where
 
 import Servant.API
+import Servant.JS
+import Servant.JS.Vanilla
+import Servant.HTML.Lucid
+import Servant
+import Servant.Server.StaticFiles
+import Network.Wai.Handler.Warp
 
 import Data.List
 import Data.Maybe
 import GHC.Generics
-import Servant
-import Servant.Server.StaticFiles
-import Network.Wai.Handler.Warp
 import Data.Map 
 import Data.Aeson
 import Control.Monad.State.Lazy
@@ -25,62 +28,45 @@ import Control.Monad.Reader
 import Control.Concurrent.STM.TVar
 import Control.Concurrent.STM
 import Region
-import Servant.JS
-import Servant.JS.Vanilla
 import GameState
-
-newtype GameId = GameId Integer deriving (Num, Eq, Ord, Show, FromHttpApiData)
-
-data Game = Game { gameBorders :: Borders, gameMap :: GameMap}
-
-type GameHub = Map GameId Game
+import Page.Game
+import Lucid.Base
+import GameStateManagement
 
 type FileApi = "static" :> Raw
 
-type FullApi = FileApi :<|> GameApi
-
+type FullApi = Website :<|> FileApi :<|> GameApi
+type Website = Get '[HTML] (Html ()) -- :<|> 
+   {- "game" :>
+        Capture "gameId" GameId :>
+            Get '[JSON] GameMap
+    -}
 
 type GameApi = 
-    "game" :> Capture "gameId" GameId :> (
-        "gameState" :> (
-            Get '[JSON] GameMap :<|>
-            ReqBody '[JSON] [GameAction] :> Post '[JSON] GameMap
-        ) :<|>
-        "borders" :> Get '[JSON] Borders
+    "game" :> (
+        Get '[JSON] [GameId] :<|>
+        Capture "gameId" GameId :> (
+            "gameState" :> (
+                Get '[JSON] GameMap :<|>
+                ReqBody '[JSON] [GameAction] :> Post '[JSON] GameMap
+            ) :<|>
+            "borders" :> Get '[JSON] Borders
+        )
     )
 
-newtype RiskyT a = RiskyT {runRiskyT :: ReaderT (TVar GameHub) IO a }
-    deriving (Functor, Applicative, Monad, MonadIO, MonadReader (TVar GameHub))
 
-getGame :: GameId -> RiskyT Game
-getGame gameId = asks (fmap (fromJust . Data.Map.lookup gameId) . readTVarIO) >>= liftIO
-
-updateGameState :: GameId -> [GameAction] -> RiskyT GameMap
-updateGameState gameId act = do
-    gameHub <- ask
-    m' <- liftIO $ atomically $ do
-        modifyTVarGame gameHub gameId (\m -> m { gameMap = reinforce $ Data.List.foldr move (gameMap m) act }) 
-        gameMap <$> readTVarGame gameHub gameId
-        
-    return $ m'
-
-modifyTVarGame :: TVar GameHub -> GameId -> (Game -> Game) -> STM ()
-modifyTVarGame gameHub gameId f = modifyTVar gameHub (adjust f gameId)
-
-readTVarGame :: TVar GameHub -> GameId -> STM Game
-readTVarGame gameHub gameId = (fromJust . Data.Map.lookup gameId) <$> readTVar gameHub
-
+getGameIds :: RiskyT [GameId]
+getGameIds = ask >>= liftIO . fmap keys . readTVarIO
 
 getGameState :: GameId -> RiskyT GameMap
 getGameState = fmap gameMap . getGame
 
 mapBorders = fmap gameBorders . getGame
 
-gameApi :: ServerT GameApi RiskyT
 gameApi gameId = (getGameState gameId :<|> updateGameState gameId) :<|> mapBorders gameId
 
 riskyApi :: ServerT FullApi RiskyT
-riskyApi = serveStaticFiles :<|> gameApi  
+riskyApi = (pure game) :<|> serveStaticFiles :<|> getGameIds :<|> gameApi  
 
 riskyServer region = hoistServer (Proxy :: Proxy FullApi) (riskyTToHandler region) riskyApi
 

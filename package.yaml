@@ -29,10 +29,9 @@ dependencies:
 - aeson
 - mtl
 - stm
+- lucid
+- servant-lucid
 
-
-library:
-  source-dirs: src
 
 executables:
   risky-exe:
