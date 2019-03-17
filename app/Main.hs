@@ -31,29 +31,10 @@ import Region
 import GameState
 import Page.Game
 import Lucid.Base
-import GameStateManagement
-
-type FileApi = "static" :> Raw
-
-type FullApi = Website :<|> FileApi :<|> GameApi
-type Website = Get '[HTML] (Html ()) -- :<|> 
-   {- "game" :>
-        Capture "gameId" GameId :>
-            Get '[JSON] GameMap
-    -}
-
-type GameApi = 
-    "game" :> (
-        Get '[JSON] [GameId] :<|>
-        Capture "gameId" GameId :> (
-            "gameState" :> (
-                Get '[JSON] GameMap :<|>
-                ReqBody '[JSON] [GameAction] :> Post '[JSON] GameMap
-            ) :<|>
-            "borders" :> Get '[JSON] Borders
-        )
-    )
-
+import DataAccess
+import Routes
+import PlayerManagement
+import Data.Foldable
 
 getGameIds :: RiskyT [GameId]
 getGameIds = ask >>= liftIO . fmap keys . readTVarIO
@@ -63,7 +44,11 @@ getGameState = fmap gameMap . getGame
 
 mapBorders = fmap gameBorders . getGame
 
-gameApi gameId = (getGameState gameId :<|> updateGameState gameId) :<|> mapBorders gameId
+updateGameMap :: GameId -> PlayerId -> [GameAction] -> RiskyT GameMap
+updateGameMap gameId _ act = do
+    updateGame gameId $ fmap concat $ traverse handleMove act
+
+gameApi gameId = (getGameState gameId :<|> updateGameMap gameId) :<|> mapBorders gameId
 
 riskyApi :: ServerT FullApi RiskyT
 riskyApi = (pure game) :<|> serveStaticFiles :<|> getGameIds :<|> gameApi  
@@ -81,8 +66,7 @@ riskyTToHandler newRegion r = liftIO $ runReaderT (runRiskyT r) newRegion
 
 app region = serve (Proxy :: Proxy FullApi) (riskyServer region)
 
-
-initGame = Game (borders 15 15) (baseRegions 15 15)
+initGame = Game (borders 15 15) (baseRegions 15 15) (fromList [(PlayerId 1, 2), (PlayerId 2, 2)])
 
 main :: IO ()
 main = do

@@ -65,7 +65,7 @@ function cancelSelection() {
 
 function commit(){
     console.log(turnActions)
-    postGameByGameIdGameState(gameId, turnActions, g =>{
+    postGameByGameIdGameState(gameId, 1, g =>{
         countiesInfo = g
         turnActions = []
         document.getElementById("actions").innerHTML = ""

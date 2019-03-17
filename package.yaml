@@ -31,7 +31,7 @@ dependencies:
 - stm
 - lucid
 - servant-lucid
-
+- array
 
 executables:
   risky-exe:
@@ -41,8 +41,6 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    dependencies:
-    - risky
 
 tests:
   risky-test:
@@ -53,4 +51,5 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - QuickCheck
     - risky

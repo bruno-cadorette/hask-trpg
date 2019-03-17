@@ -4,7 +4,7 @@
 module Page.Game where
 
 import Lucid
-import GameStateManagement
+import DataAccess
 import Data.Map 
 import Control.Monad.Reader
 
@@ -46,3 +46,4 @@ gameBody = do
         "Money: "
         label_ [id_ "money"] "0")
     script_ ("window.onload = init")
+ 

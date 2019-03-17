@@ -1,28 +1,33 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveGeneric #-}
 module Region where
 
+import PlayerManagement
 import Data.Aeson
 import Data.Map 
 import GHC.Generics
 
 newtype RegionId = RegionId String deriving (Show, Eq, Ord, FromJSON, ToJSON, ToJSONKey, FromJSONKey)
+
 newtype Borders = Borders (Map RegionId [RegionId]) deriving (FromJSON, ToJSON)
 newtype FactionId = FactionId Integer deriving (Show, Eq, Ord, FromJSON, ToJSON)
+newtype Army = Army Integer deriving (Show, Eq, Ord, FromJSON, ToJSON, Num)
 
-data RegionInfo = RegionInfo {faction :: FactionId, population :: Integer} deriving(Generic, Show)
-newtype GameMap = GameMap { gameMapToMap :: (Map RegionId RegionInfo) } deriving (FromJSON, ToJSON) 
+data RegionInfo = RegionInfo {faction :: Maybe PlayerId, population :: Army} deriving(Show, Generic)
 
 instance FromJSON RegionInfo
 instance ToJSON RegionInfo
 
+newtype GameMap = GameMap { gameMapToMap :: (Map RegionId RegionInfo) } deriving (FromJSON, ToJSON) 
+
+
 baseRegions :: Int -> Int -> GameMap
 baseRegions x y = GameMap $ fromList $ fmap (\id -> (id, RegionInfo (getFaction id) 2)) $ allRegionRegionId mkRegionId x y
 
-getFaction :: RegionId -> FactionId
-getFaction (RegionId "2_2") = FactionId 1
-getFaction (RegionId "6_8") = FactionId 2
-getFaction _     = FactionId 0
+getFaction :: RegionId -> Maybe PlayerId
+getFaction (RegionId "2_2") = Just $ PlayerId 1
+getFaction (RegionId "6_8") = Just $ PlayerId 2
+getFaction _     = Nothing
 
 allRegionRegionId f x y = do
     x' <- [0..x]
