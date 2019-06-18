@@ -7,6 +7,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TupleSections #-}
 
 module Main where
 
@@ -44,9 +45,16 @@ getGameState = fmap gameMap . getGame
 
 mapBorders = fmap gameBorders . getGame
 
-updateGameMap :: GameId -> PlayerId -> [GameAction] -> RiskyT GameMap
-updateGameMap gameId _ act = do
-    updateGame gameId $ fmap concat $ traverse handleMove act
+updateGameMap :: GameId -> PlayerId -> [GameAction] -> RiskyT ()
+updateGameMap gameId pid act = do
+    playerCacheResult <- liftIO $ atomically $ addToCache undefined pid act
+    case playerCacheResult of
+        Just result -> updateGame gameId $ fmap concat $ traverse handleMove $ fmap snd $ actionOrders result
+        Nothing -> undefined
+
+actionOrders :: [(PlayerId, [GameAction])] -> [(PlayerId, GameAction)]
+actionOrders = concat . transpose . fmap (\(pid, as) -> fmap (pid,) as)
+
 
 gameApi gameId = (getGameState gameId :<|> updateGameMap gameId) :<|> mapBorders gameId
 

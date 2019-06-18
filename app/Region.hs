@@ -18,6 +18,7 @@ data RegionInfo = RegionInfo {faction :: Maybe PlayerId, population :: Army} der
 instance FromJSON RegionInfo
 instance ToJSON RegionInfo
 
+--coerce
 newtype GameMap = GameMap { gameMapToMap :: (Map RegionId RegionInfo) } deriving (FromJSON, ToJSON) 
 
 

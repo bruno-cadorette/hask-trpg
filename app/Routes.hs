@@ -35,8 +35,7 @@ type GameApi =
         Capture "gameId" GameId :> (
             "gameState" :> (
                 Get '[JSON] GameMap :<|>
-                ReqBody '[JSON] PlayerId :>
-                ReqBody '[JSON] [GameAction] :> Post '[JSON] GameMap
+                Capture "playerId" PlayerId :> ReqBody '[JSON] [GameAction] :> Post '[JSON] ()
             ) :<|>
             "borders" :> Get '[JSON] Borders
         )

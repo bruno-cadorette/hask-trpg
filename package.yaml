@@ -32,12 +32,19 @@ dependencies:
 - lucid
 - servant-lucid
 - array
+- lens
+- polysemy
+- polysemy-plugin
+
+library:
+  source-dirs: src 
 
 executables:
   risky-exe:
     main:                Main.hs
     source-dirs:         app
-    ghc-options:
+    ghc-options: 
+    - -fplugin=Polysemy.Plugin
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N

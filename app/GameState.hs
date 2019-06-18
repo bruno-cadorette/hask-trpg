@@ -1,4 +1,8 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE LambdaCase, BlockArguments #-}
+{-# LANGUAGE GADTs, FlexibleContexts, TypeOperators, DataKinds, PolyKinds #-}
+
 module GameState where
 
 import Data.Aeson
@@ -10,72 +14,80 @@ import PlayerManagement
 import Data.List
 import Control.Monad.Except
 import Control.Monad.Reader
+import Polysemy
+import Polysemy.Error
 
-type GameStateMonad a = ReaderT GameMap (Except GameStateError) a
+data ReadDb m a where
+    GetRegionInfo :: RegionId -> ReadDb m RegionInfo
 
-data GameStateError = 
-    MoveFromEmpty RegionId |
-    MoveTooMuch RegionId Army Army |
+data UpdateRegion m a where
+    UpdatePopulation :: RegionId -> Army -> UpdateRegion m ()
+    ChangeFaction :: RegionId -> PlayerId -> Army -> UpdateRegion m ()
+
+data PlayerInformation m a where
+    GetCurrentPlayerId :: PlayerInformation m PlayerId
+
+
+makeSem ''ReadDb
+makeSem ''UpdateRegion
+makeSem ''PlayerInformation
+
+data DbError = 
     OutOfBound RegionId
+
+data PlayerMoveInputError =
+    SelectedEmptySource RegionId |
+    MoveTooMuch RegionId Army Army
     deriving (Show)
 
+
+data Move = Move {origin :: RegionId, destination :: RegionId, troops :: Army } deriving(Generic, Show)
+
+instance FromJSON Move
+instance ToJSON Move
+
 data GameAction = 
-    Move {origin :: RegionId, destination :: RegionId, troops :: Army } deriving(Generic, Show)
+    GameAction {movements :: [Move], playerReinforcement :: [(RegionId, Int)]} deriving(Generic, Show)
+    
 
 data AttackingArmy = AttackingArmy PlayerId Army deriving (Show)
 
-data UpdateRegionCommand = UpdateRegionPopulation RegionId Army | ChangeRegionFaction RegionId PlayerId Army
 
 instance FromJSON GameAction
 instance ToJSON GameAction
 
+type MoveEffects = '[UpdateRegion, Error PlayerMoveInputError, ReadDb, PlayerInformation] 
 
-askGameMap = ask
-
-liftMaybe _ (Just a) = pure a
-liftMaybe b _        = throwError b
-
-getRegionInfo :: RegionId -> GameStateMonad RegionInfo
-getRegionInfo regionId = do
-    (GameMap gameMap) <- askGameMap
-    liftMaybe (OutOfBound regionId) (Map.lookup regionId gameMap)
-
-
-getPlayerId :: RegionId -> RegionInfo -> GameStateMonad PlayerId
-getPlayerId originId (RegionInfo playerId _) =
-    liftMaybe (MoveFromEmpty originId) playerId
-
-updateAttackingRegion :: GameAction -> RegionInfo -> GameStateMonad UpdateRegionCommand
+updateAttackingRegion :: Members '[UpdateRegion, Error PlayerMoveInputError] r => Move -> RegionInfo -> Sem r ()
 updateAttackingRegion (Move originId _ troopsToMove) (RegionInfo _ baseTroops) =   
     if baseTroops >= troopsToMove then
-        pure $ UpdateRegionPopulation originId (baseTroops - troopsToMove)
+        updatePopulation originId (baseTroops - troopsToMove)
     else
-        throwError (MoveTooMuch originId baseTroops troopsToMove)
+        throw (MoveTooMuch originId baseTroops troopsToMove)
 
-attackerCommand :: GameAction -> GameStateMonad (AttackingArmy, UpdateRegionCommand)
-attackerCommand movement@(Move originId _ troops) = do
+extractAttackingArmy :: Members MoveEffects r => Move -> Sem r AttackingArmy 
+extractAttackingArmy movement@(Move originId _ troops) = do
     regionInfo <- getRegionInfo originId
-    playerId <- getPlayerId originId regionInfo
-    updateCommand <- updateAttackingRegion movement regionInfo
-    return (AttackingArmy playerId troops, updateCommand)
+    playerId <- getCurrentPlayerId
+    updateAttackingRegion movement regionInfo
+    return $ AttackingArmy playerId troops
 
-defenderCommand :: AttackingArmy -> RegionId -> GameStateMonad UpdateRegionCommand
-defenderCommand attackingArmy destinationId = invasion attackingArmy destinationId <$> getRegionInfo destinationId
-
-handleMove :: GameAction -> GameStateMonad [UpdateRegionCommand]
+handleMove :: Members MoveEffects r => Move -> Sem r ()
 handleMove move@(Move originId destinationId attackingTroopsNumber) = do 
-    (attackers, updateAttack) <- attackerCommand move 
-    updateDefense <- defenderCommand attackers destinationId
-    return $ [updateAttack, updateDefense] 
+    attackingArmy <- extractAttackingArmy move 
+    regionInfo <- getRegionInfo destinationId
+    invasion attackingArmy destinationId regionInfo
     
-invasion :: AttackingArmy -> RegionId -> RegionInfo -> UpdateRegionCommand
+invasion :: Member UpdateRegion r => AttackingArmy -> RegionId -> RegionInfo -> Sem r ()
 invasion (AttackingArmy attackerFaction attackerTroops) regionId (RegionInfo defenderFaction defenderTroops)
     | (Just attackerFaction) == defenderFaction =
-        UpdateRegionPopulation regionId (attackerTroops + defenderTroops)
+        updatePopulation regionId (attackerTroops + defenderTroops)
     | defenderTroops - attackerTroops < 0 =
-        ChangeRegionFaction regionId attackerFaction (attackerTroops - defenderTroops)
+        changeFaction regionId attackerFaction (attackerTroops - defenderTroops)
     | otherwise =
-        UpdateRegionPopulation regionId (defenderTroops - attackerTroops)
+        updatePopulation regionId (defenderTroops - attackerTroops)
+
+
 
 reinforce :: GameMap -> GameMap
 reinforce = GameMap . Map.map (\(RegionInfo f p) -> RegionInfo f (if f == Nothing then p else p + 1)) . gameMapToMap

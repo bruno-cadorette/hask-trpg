@@ -41,9 +41,9 @@ var getGameByGameIdGameState = function(gameId, onSuccess, onError) {
   xhr.send(null);
 };
 
-var postGameByGameIdGameState = function(gameId, body, onSuccess, onError) {
+var postGameByGameIdGameStateByPlayerId = function(gameId, playerId, body, onSuccess, onError) {
   var xhr = new XMLHttpRequest();
-  xhr.open('POST', '/game/' + encodeURIComponent(gameId) + '/gameState', true);
+  xhr.open('POST', '/game/' + encodeURIComponent(gameId) + '/gameState/' + encodeURIComponent(playerId) + '', true);
   xhr.setRequestHeader('Accept', 'application/json');
   xhr.setRequestHeader('Content-Type', 'application/json');
   xhr.onreadystatechange = function () {

@@ -2,6 +2,7 @@
 module PlayerManagement where
 
 import Data.Aeson
+import Servant
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TArray
 import Data.Ix
@@ -11,7 +12,7 @@ import Data.Bifunctor
 import Data.Foldable
 
 
-newtype PlayerId = PlayerId Integer deriving (Eq, Ord, Show, Ix, ToJSON, FromJSON)
+newtype PlayerId = PlayerId Integer deriving (Eq, Ord, Show, Ix, ToJSON, FromJSON, FromHttpApiData)
 
 type Action = Int
 
