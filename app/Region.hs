@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DeriveGeneric #-}
 module Region where
 
@@ -6,6 +7,7 @@ import PlayerManagement
 import Data.Aeson
 import Data.Map 
 import GHC.Generics
+import Control.Lens
 
 newtype RegionId = RegionId String deriving (Show, Eq, Ord, FromJSON, ToJSON, ToJSONKey, FromJSONKey)
 
@@ -13,10 +15,13 @@ newtype Borders = Borders (Map RegionId [RegionId]) deriving (FromJSON, ToJSON)
 newtype FactionId = FactionId Integer deriving (Show, Eq, Ord, FromJSON, ToJSON)
 newtype Army = Army Integer deriving (Show, Eq, Ord, FromJSON, ToJSON, Num)
 
-data RegionInfo = RegionInfo {faction :: Maybe PlayerId, population :: Army} deriving(Show, Generic)
+data RegionInfo = RegionInfo {_faction :: Maybe PlayerId, _population :: Army} deriving(Show, Generic)
 
 instance FromJSON RegionInfo
 instance ToJSON RegionInfo
+
+
+makeLenses ''RegionInfo
 
 --coerce
 newtype GameMap = GameMap { gameMapToMap :: (Map RegionId RegionInfo) } deriving (FromJSON, ToJSON) 

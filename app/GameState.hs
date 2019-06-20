@@ -12,13 +12,11 @@ import Region
 import Data.Maybe
 import PlayerManagement
 import Data.List
-import Control.Monad.Except
-import Control.Monad.Reader
 import Polysemy
 import Polysemy.Error
 
-data ReadDb m a where
-    GetRegionInfo :: RegionId -> ReadDb m RegionInfo
+data ReadMapInfo m a where
+    GetRegionInfo :: RegionId -> ReadMapInfo m RegionInfo
 
 data UpdateRegion m a where
     UpdatePopulation :: RegionId -> Army -> UpdateRegion m ()
@@ -28,7 +26,7 @@ data PlayerInformation m a where
     GetCurrentPlayerId :: PlayerInformation m PlayerId
 
 
-makeSem ''ReadDb
+makeSem ''ReadMapInfo
 makeSem ''UpdateRegion
 makeSem ''PlayerInformation
 
@@ -56,7 +54,7 @@ data AttackingArmy = AttackingArmy PlayerId Army deriving (Show)
 instance FromJSON GameAction
 instance ToJSON GameAction
 
-type MoveEffects = '[UpdateRegion, Error PlayerMoveInputError, ReadDb, PlayerInformation] 
+type MoveEffects = '[UpdateRegion, Error PlayerMoveInputError, ReadMapInfo, PlayerInformation] 
 
 updateAttackingRegion :: Members '[UpdateRegion, Error PlayerMoveInputError] r => Move -> RegionInfo -> Sem r ()
 updateAttackingRegion (Move originId _ troopsToMove) (RegionInfo _ baseTroops) =   
@@ -93,5 +91,5 @@ reinforce :: GameMap -> GameMap
 reinforce = GameMap . Map.map (\(RegionInfo f p) -> RegionInfo f (if f == Nothing then p else p + 1)) . gameMapToMap
 
 getNextReinforcement :: GameMap -> [(PlayerId, Int)]
-getNextReinforcement = fmap (\xs -> (head xs, length xs)) . group . sort . mapMaybe faction . Map.elems . gameMapToMap
+getNextReinforcement = fmap (\xs -> (head xs, length xs)) . group . sort . mapMaybe _faction . Map.elems . gameMapToMap
 
