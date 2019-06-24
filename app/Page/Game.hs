@@ -4,7 +4,7 @@
 module Page.Game where
 
 import Lucid
-import DataAccess
+import Game.Effects
 import Data.Map 
 import Control.Monad.Reader
 

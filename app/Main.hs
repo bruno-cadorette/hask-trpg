@@ -29,10 +29,10 @@ import Control.Monad.Reader
 import Control.Concurrent.STM.TVar
 import Control.Concurrent.STM
 import Region
-import GameState
+import Game.Effects
 import Page.Game
 import Lucid.Base
-import DataAccess
+import Game.Logic
 import Routes
 import PlayerManagement
 import Data.Foldable
@@ -47,16 +47,12 @@ getGameState = undefined--fmap gameMap . getGame
 
 runRiskyT = undefined
 
-mapBorders = undefined--fmap gameBorders . getGame
-updateGameMap = undefined
-handleMove = undefined
-{-updateGameMap :: GameId -> PlayerId -> [GameAction] -> RiskyT ()
-updateGameMap gameId pid act = do
-    playerCacheResult <- liftIO $ atomically $ addToCache undefined pid act
-    case playerCacheResult of
-        Just result -> updateGame gameId $ fmap concat $ traverse handleMove $ fmap snd $ actionOrders result
-        Nothing -> undefined
--}
+mapBorders = undefined--fmap gameBorders . getGameIds
+
+updateGameMap :: GameId -> PlayerId -> GameHub -> [GameAction] -> RiskyT ()
+updateGameMap gameId pid act hub = do
+    runGameTurn pid 
+
 actionOrders :: [(PlayerId, [GameAction])] -> [(PlayerId, GameAction)]
 actionOrders = concat . transpose . fmap (\(pid, as) -> fmap (pid,) as)
 

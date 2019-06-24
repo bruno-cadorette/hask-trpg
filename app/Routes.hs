@@ -15,8 +15,8 @@ import Servant
 import Servant.API
 import Servant.HTML.Lucid
 import Lucid.Base
-import DataAccess
-import GameState
+import Game.Effects
+import Game.Logic
 import Region
 import PlayerManagement
 

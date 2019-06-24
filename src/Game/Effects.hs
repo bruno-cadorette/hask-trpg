@@ -6,7 +6,7 @@
 {-# LANGUAGE LambdaCase, BlockArguments, TypeApplications, TypeFamilies #-}
 {-# LANGUAGE GADTs, FlexibleContexts, TypeOperators, DataKinds, PolyKinds, RankNTypes, ScopedTypeVariables #-}
 
-module DataAccess where
+module Game.Effects where
 
 import Polysemy.State
 import Servant
@@ -19,9 +19,9 @@ import Data.Foldable
 import Control.Concurrent.STM.TVar
 import Control.Concurrent.STM
 import Region
-import GameState
 import PlayerManagement
 import Control.Lens
+import Control.Exception.Base(Exception)
 import Polysemy
 import Polysemy.Error
 import Polysemy.Reader
@@ -41,13 +41,23 @@ newtype GameId = GameId Integer deriving (Num, Eq, Ord, Show, FromHttpApiData, G
 newtype RiskyT a = RiskyT (Identity a)
     deriving (Functor, Applicative, Monad)
 
-data ReadGameManagement m a where
-    GetGame :: GameId -> ReadGameManagement m Game
+data ReadMapInfo m a where
+    GetRegionInfo :: RegionId -> ReadMapInfo m RegionInfo
 
+data UpdateRegion m a where
+    UpdatePopulation :: RegionId -> Army -> UpdateRegion m ()
+    ChangeFaction :: RegionId -> PlayerId -> Army -> UpdateRegion m ()
 
-updateGame playerId game moves = do
-    runGameTurn playerId game $ traverse_ handleMove moves
-    
+data PlayerMoveInputError =
+    SelectedEmptySource RegionId |
+    RegionDontExist RegionId |
+    MoveTooMuch RegionId Army Army
+    deriving (Show)
+
+instance Exception PlayerMoveInputError
+
+makeSem ''ReadMapInfo
+makeSem ''UpdateRegion
 
 runGameTurn :: 
     PlayerId -> 
@@ -65,8 +75,6 @@ runGameTurn playerId game =
     runGameMapState .
     runReadMapInfo . 
     runUpdateRegion
-
-
 
 runReadMapInfo :: Members '[State GameMap, Error PlayerMoveInputError] r => Sem (ReadMapInfo ': r) a -> Sem r a
 runReadMapInfo = interpret $ \(GetRegionInfo regionId) -> do

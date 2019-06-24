@@ -3,7 +3,7 @@
 {-# LANGUAGE LambdaCase, BlockArguments, ScopedTypeVariables #-}
 {-# LANGUAGE GADTs, FlexibleContexts, TypeOperators, DataKinds, PolyKinds #-}
 
-module GameState where
+module Game.Logic where
 
 import Data.Aeson
 import qualified Data.Map as Map
@@ -15,26 +15,8 @@ import Data.List
 import Polysemy
 import Polysemy.Reader
 import Polysemy.Error
-
-data ReadMapInfo m a where
-    GetRegionInfo :: RegionId -> ReadMapInfo m RegionInfo
-
-data UpdateRegion m a where
-    UpdatePopulation :: RegionId -> Army -> UpdateRegion m ()
-    ChangeFaction :: RegionId -> PlayerId -> Army -> UpdateRegion m ()
-
-
-makeSem ''ReadMapInfo
-makeSem ''UpdateRegion
-
-data DbError = 
-    OutOfBound RegionId
-
-data PlayerMoveInputError =
-    SelectedEmptySource RegionId |
-    RegionDontExist RegionId |
-    MoveTooMuch RegionId Army Army
-    deriving (Show)
+import Game.Effects
+import Data.Foldable
 
 
 data Move = Move {origin :: RegionId, destination :: RegionId, troops :: Army } deriving(Generic, Show)
@@ -85,6 +67,8 @@ invasion (AttackingArmy attackerFaction attackerTroops) regionId (RegionInfo def
         updatePopulation regionId (defenderTroops - attackerTroops)
 
 
+updateGame playerId game moves = do
+    runGameTurn playerId game $ traverse_ handleMove moves
 
 reinforce :: GameMap -> GameMap
 reinforce = Map.map (\(RegionInfo f p) -> RegionInfo f (if f == Nothing then p else p + 1))

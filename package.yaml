@@ -33,16 +33,12 @@ dependencies:
 - servant-lucid
 - array
 - lens
+- servant-checked-exceptions
 - polysemy
-- polysemy-plugin
 
 library:
   source-dirs: src 
   ghc-options: 
-  - -fplugin=Polysemy.Plugin
-  - -threaded
-  - -rtsopts
-  - -with-rtsopts=-N
   - -O2 
   - -flate-specialise 
   - -fspecialise-aggressively
@@ -52,7 +48,6 @@ executables:
     main:                Main.hs
     source-dirs:         app
     ghc-options: 
-    - -fplugin=Polysemy.Plugin
     - -O2 
     - -flate-specialise 
     - -fspecialise-aggressively
