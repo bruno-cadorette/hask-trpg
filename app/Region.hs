@@ -23,12 +23,11 @@ instance ToJSON RegionInfo
 
 makeLenses ''RegionInfo
 
---coerce
-newtype GameMap = GameMap { gameMapToMap :: (Map RegionId RegionInfo) } deriving (FromJSON, ToJSON) 
+type GameMap = Map RegionId RegionInfo
 
 
 baseRegions :: Int -> Int -> GameMap
-baseRegions x y = GameMap $ fromList $ fmap (\id -> (id, RegionInfo (getFaction id) 2)) $ allRegionRegionId mkRegionId x y
+baseRegions x y = fromList $ fmap (\id -> (id, RegionInfo (getFaction id) 2)) $ allRegionRegionId mkRegionId x y
 
 getFaction :: RegionId -> Maybe PlayerId
 getFaction (RegionId "2_2") = Just $ PlayerId 1

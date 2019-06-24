@@ -37,21 +37,26 @@ import Routes
 import PlayerManagement
 import Data.Foldable
 
+getGame = undefined
+updateGame = undefined
+
 getGameIds :: RiskyT [GameId]
-getGameIds = ask >>= liftIO . fmap keys . readTVarIO
+getGameIds = undefined-- ask >>= liftIO . fmap keys . readTVarIO
 
-getGameState :: GameId -> RiskyT GameMap
-getGameState = fmap gameMap . getGame
+getGameState = undefined--fmap gameMap . getGame
 
-mapBorders = fmap gameBorders . getGame
+runRiskyT = undefined
 
-updateGameMap :: GameId -> PlayerId -> [GameAction] -> RiskyT ()
+mapBorders = undefined--fmap gameBorders . getGame
+updateGameMap = undefined
+handleMove = undefined
+{-updateGameMap :: GameId -> PlayerId -> [GameAction] -> RiskyT ()
 updateGameMap gameId pid act = do
     playerCacheResult <- liftIO $ atomically $ addToCache undefined pid act
     case playerCacheResult of
         Just result -> updateGame gameId $ fmap concat $ traverse handleMove $ fmap snd $ actionOrders result
         Nothing -> undefined
-
+-}
 actionOrders :: [(PlayerId, [GameAction])] -> [(PlayerId, GameAction)]
 actionOrders = concat . transpose . fmap (\(pid, as) -> fmap (pid,) as)
 
@@ -59,7 +64,7 @@ actionOrders = concat . transpose . fmap (\(pid, as) -> fmap (pid,) as)
 gameApi gameId = (getGameState gameId :<|> updateGameMap gameId) :<|> mapBorders gameId
 
 riskyApi :: ServerT FullApi RiskyT
-riskyApi = (pure game) :<|> serveStaticFiles :<|> getGameIds :<|> gameApi  
+riskyApi = undefined--(pure game) :<|> serveStaticFiles :<|> getGameIds :<|> gameApi  
 
 riskyServer region = hoistServer (Proxy :: Proxy FullApi) (riskyTToHandler region) riskyApi
 
@@ -74,7 +79,7 @@ riskyTToHandler newRegion r = liftIO $ runReaderT (runRiskyT r) newRegion
 
 app region = serve (Proxy :: Proxy FullApi) (riskyServer region)
 
-initGame = Game (borders 15 15) (baseRegions 15 15) (fromList [(PlayerId 1, 2), (PlayerId 2, 2)])
+initGame = undefined--Game (borders 15 15) (baseRegions 15 15) (fromList [(PlayerId 1, 2), (PlayerId 2, 2)])
 
 main :: IO ()
 main = do

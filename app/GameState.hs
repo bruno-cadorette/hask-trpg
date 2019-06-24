@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE LambdaCase, BlockArguments #-}
+{-# LANGUAGE LambdaCase, BlockArguments, ScopedTypeVariables #-}
 {-# LANGUAGE GADTs, FlexibleContexts, TypeOperators, DataKinds, PolyKinds #-}
 
 module GameState where
@@ -13,6 +13,7 @@ import Data.Maybe
 import PlayerManagement
 import Data.List
 import Polysemy
+import Polysemy.Reader
 import Polysemy.Error
 
 data ReadMapInfo m a where
@@ -22,19 +23,16 @@ data UpdateRegion m a where
     UpdatePopulation :: RegionId -> Army -> UpdateRegion m ()
     ChangeFaction :: RegionId -> PlayerId -> Army -> UpdateRegion m ()
 
-data PlayerInformation m a where
-    GetCurrentPlayerId :: PlayerInformation m PlayerId
-
 
 makeSem ''ReadMapInfo
 makeSem ''UpdateRegion
-makeSem ''PlayerInformation
 
 data DbError = 
     OutOfBound RegionId
 
 data PlayerMoveInputError =
     SelectedEmptySource RegionId |
+    RegionDontExist RegionId |
     MoveTooMuch RegionId Army Army
     deriving (Show)
 
@@ -49,12 +47,13 @@ data GameAction =
     
 
 data AttackingArmy = AttackingArmy PlayerId Army deriving (Show)
-
+getCurrentPlayerId :: Member (Reader PlayerId) r => Sem r PlayerId
+getCurrentPlayerId = ask
 
 instance FromJSON GameAction
 instance ToJSON GameAction
 
-type MoveEffects = '[UpdateRegion, Error PlayerMoveInputError, ReadMapInfo, PlayerInformation] 
+type MoveEffects = '[UpdateRegion, Error PlayerMoveInputError, ReadMapInfo, Reader PlayerId] 
 
 updateAttackingRegion :: Members '[UpdateRegion, Error PlayerMoveInputError] r => Move -> RegionInfo -> Sem r ()
 updateAttackingRegion (Move originId _ troopsToMove) (RegionInfo _ baseTroops) =   
@@ -88,8 +87,8 @@ invasion (AttackingArmy attackerFaction attackerTroops) regionId (RegionInfo def
 
 
 reinforce :: GameMap -> GameMap
-reinforce = GameMap . Map.map (\(RegionInfo f p) -> RegionInfo f (if f == Nothing then p else p + 1)) . gameMapToMap
+reinforce = Map.map (\(RegionInfo f p) -> RegionInfo f (if f == Nothing then p else p + 1))
 
 getNextReinforcement :: GameMap -> [(PlayerId, Int)]
-getNextReinforcement = fmap (\xs -> (head xs, length xs)) . group . sort . mapMaybe _faction . Map.elems . gameMapToMap
+getNextReinforcement = fmap (\xs -> (head xs, length xs)) . group . sort . mapMaybe _faction . Map.elems
 

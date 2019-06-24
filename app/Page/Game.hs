@@ -12,6 +12,7 @@ import Control.Monad.Reader
 headTemplate title = head_ (title_ title)
 pageTemplate title pageBody = doctypehtml_ (headTemplate title <> body_ pageBody)
 
+getGameHub = pure mempty
 
 gameList :: RiskyT(Html ())
 gameList = do
