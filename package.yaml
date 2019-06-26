@@ -35,6 +35,7 @@ dependencies:
 - lens
 - servant-checked-exceptions
 - polysemy
+- polysemy-plugin
 
 library:
   source-dirs: src 
@@ -54,14 +55,12 @@ executables:
     default-extensions:
     - DataKinds
     - FlexibleContexts
-    - GADTs
     - LambdaCase
     - PolyKinds
     - RankNTypes
     - ScopedTypeVariables
     - TypeApplications
     - TypeOperators
-    - TypeFamilies
 
 tests:
   risky-test:

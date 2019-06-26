@@ -24,8 +24,6 @@ import Data.Maybe
 import GHC.Generics
 import Data.Map 
 import Data.Aeson
-import Control.Monad.State.Lazy
-import Control.Monad.Reader
 import Control.Concurrent.STM.TVar
 import Control.Concurrent.STM
 import Region
@@ -36,9 +34,10 @@ import Game.Logic
 import Routes
 import PlayerManagement
 import Data.Foldable
-
-getGame = undefined
-updateGame = undefined
+import Polysemy
+import Polysemy.Error
+import Polysemy.Input
+import Polysemy.Reader
 
 getGameIds :: RiskyT [GameId]
 getGameIds = undefined-- ask >>= liftIO . fmap keys . readTVarIO
@@ -49,9 +48,9 @@ runRiskyT = undefined
 
 mapBorders = undefined--fmap gameBorders . getGameIds
 
-updateGameMap :: GameId -> PlayerId -> GameHub -> [GameAction] -> RiskyT ()
-updateGameMap gameId pid act hub = do
-    runGameTurn pid 
+updateGameMap :: Members '[Reader GameHub, Input GameId, Input PlayerId, Error GameHubError] r => Sem r a
+updateGameMap gameId pid hub act = do
+    updateGame pid (hub Data.Map.! gameId) act
 
 actionOrders :: [(PlayerId, [GameAction])] -> [(PlayerId, GameAction)]
 actionOrders = concat . transpose . fmap (\(pid, as) -> fmap (pid,) as)
@@ -81,5 +80,5 @@ main :: IO ()
 main = do
     newGame <- newTVarIO $ Data.Map.fromList [(1, initGame)]
     writeJSFiles
-    run 8081 (app newGame)
+    Network.Wai.Handler.Warp.run 8081 (app newGame)
 

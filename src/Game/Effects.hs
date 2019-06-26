@@ -5,6 +5,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE LambdaCase, BlockArguments, TypeApplications, TypeFamilies #-}
 {-# LANGUAGE GADTs, FlexibleContexts, TypeOperators, DataKinds, PolyKinds, RankNTypes, ScopedTypeVariables #-}
+{-# OPTIONS_GHC -fplugin=Polysemy.Plugin #-}
 
 module Game.Effects where
 
@@ -25,6 +26,7 @@ import Control.Exception.Base(Exception)
 import Polysemy
 import Polysemy.Error
 import Polysemy.Reader
+import Polysemy.Input
 
 data TurnInfo = TurnInfo { _gameMap :: GameMap, _reinforcement :: Map PlayerId Int, _turnNumber :: Int }
 
@@ -63,9 +65,14 @@ runGameTurn ::
     PlayerId -> 
     TVar Game ->      
     Sem '[
-        UpdateRegion, ReadMapInfo, State GameMap,
-        Error PlayerMoveInputError, Reader (TVar Game), Reader PlayerId,
-        Lift STM] a ->
+        UpdateRegion, 
+        ReadMapInfo, 
+        State GameMap,
+        Error PlayerMoveInputError, 
+        Reader (TVar Game), 
+        Reader PlayerId,
+        Lift STM
+    ] a ->
     STM (Either PlayerMoveInputError a)
 runGameTurn playerId game = 
     runM . 
@@ -75,6 +82,7 @@ runGameTurn playerId game =
     runGameMapState .
     runReadMapInfo . 
     runUpdateRegion
+    
 
 runReadMapInfo :: Members '[State GameMap, Error PlayerMoveInputError] r => Sem (ReadMapInfo ': r) a -> Sem r a
 runReadMapInfo = interpret $ \(GetRegionInfo regionId) -> do
@@ -100,3 +108,50 @@ runGameMapState = interpret $ \case
     Put s -> do
         var <- ask
         sendM $ modifyTVar var (set (turnInfo.gameMap) s)    
+
+newtype KeyNotFoundError k = KeyNotFoundError k
+ 
+lookupWithInput :: Ord k => Members '[Reader (Map k a), Input k, Error (KeyNotFoundError k)] r => Sem r a
+lookupWithInput = do
+    key <- input 
+    result <- asks (Data.Map.lookup key)
+    case result of
+        Just r  -> pure r
+        Nothing -> throw (KeyNotFoundError key)
+
+
+runGameMapState' :: Members '[Lift STM] r => Sem (State GameMap ': r) a -> Sem (Reader (TVar Game) ': r) a
+runGameMapState' = reinterpret $ \case
+    Get   -> do
+        var <- ask
+        sendM $ fmap (view (turnInfo.gameMap)) $ readTVar var
+    Put s -> do
+        var <- ask
+        sendM $ modifyTVar var (set (turnInfo.gameMap) s)   
+
+runTVarGame :: Members '[Input GameId, Reader GameHub,  Error (KeyNotFoundError GameId)] r => Sem (Reader (TVar Game) ': r) a -> Sem r a
+runTVarGame sem = do
+    game <- lookupWithInput
+    runReader game sem
+
+
+update :: 
+    Members '[
+        Reader GameHub, 
+        Input GameId, 
+        Error (KeyNotFoundError GameId),
+        Error PlayerMoveInputError,
+        Lift STM
+    ] r => 
+    Sem (
+        UpdateRegion ':
+        ReadMapInfo ':
+        State GameMap ':
+        r
+     ) a ->
+    Sem r a
+update = 
+    runTVarGame . 
+    runGameMapState' .
+    runReadMapInfo . 
+    runUpdateRegion

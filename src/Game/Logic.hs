@@ -14,6 +14,7 @@ import PlayerManagement
 import Data.List
 import Polysemy
 import Polysemy.Reader
+import Polysemy.Input
 import Polysemy.Error
 import Game.Effects
 import Data.Foldable
