@@ -2,6 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE LambdaCase, BlockArguments, ScopedTypeVariables #-}
 {-# LANGUAGE GADTs, FlexibleContexts, TypeOperators, DataKinds, PolyKinds #-}
+{-# OPTIONS_GHC -fplugin=Polysemy.Plugin #-}
 
 module Game.Logic where
 
@@ -66,10 +67,6 @@ invasion (AttackingArmy attackerFaction attackerTroops) regionId (RegionInfo def
         changeFaction regionId attackerFaction (attackerTroops - defenderTroops)
     | otherwise =
         updatePopulation regionId (defenderTroops - attackerTroops)
-
-
-updateGame playerId game moves = do
-    runGameTurn playerId game $ traverse_ handleMove moves
 
 reinforce :: GameMap -> GameMap
 reinforce = Map.map (\(RegionInfo f p) -> RegionInfo f (if f == Nothing then p else p + 1))

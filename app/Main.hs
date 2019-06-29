@@ -39,6 +39,16 @@ import Polysemy.Error
 import Polysemy.Input
 import Polysemy.Reader
 
+newtype Risky a = Risky a
+
+commute :: Either a (Either b c) -> Either (Either a b) c
+commute (Right a) = 
+    case a of
+        Right x -> Right x
+        Left x -> Left (Right x)
+commute (Left x) = Left (Left x)
+runErrors = fmap commute . runError @(KeyNotFoundError GameId) . runError @PlayerMoveInputError
+
 getGameIds :: RiskyT [GameId]
 getGameIds = undefined-- ask >>= liftIO . fmap keys . readTVarIO
 
@@ -48,13 +58,12 @@ runRiskyT = undefined
 
 mapBorders = undefined--fmap gameBorders . getGameIds
 
-updateGameMap :: Members '[Reader GameHub, Input GameId, Input PlayerId, Error GameHubError] r => Sem r a
-updateGameMap gameId pid hub act = do
-    updateGame pid (hub Data.Map.! gameId) act
-
 actionOrders :: [(PlayerId, [GameAction])] -> [(PlayerId, GameAction)]
 actionOrders = concat . transpose . fmap (\(pid, as) -> fmap (pid,) as)
 
+updateGameMap :: GameId -> PlayerId -> [Move] -> GameHub -> STM ((Either (Either (KeyNotFoundError GameId) PlayerMoveInputError) ()))
+updateGameMap gameId playerId moves hub = 
+    runM $ runReader playerId $ runConstInput gameId $ runErrors $ runReader hub $ runGameTurn $ traverse_ handleMove moves
 
 gameApi gameId = (getGameState gameId :<|> updateGameMap gameId) :<|> mapBorders gameId
 
@@ -70,7 +79,7 @@ serveStaticFiles :: ServerT FileApi RiskyT
 serveStaticFiles = serveDirectoryWebApp "/home/bruno/git/risky/app/static"
 
 riskyTToHandler :: TVar GameHub -> RiskyT a -> Handler a
-riskyTToHandler newRegion r = liftIO $ runReaderT (runRiskyT r) newRegion
+riskyTToHandler newRegion r = undefined-- liftIO $ runReaderT (runRiskyT r) newRegion
 
 app region = serve (Proxy :: Proxy FullApi) (riskyServer region)
 

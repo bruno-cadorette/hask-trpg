@@ -61,29 +61,6 @@ instance Exception PlayerMoveInputError
 makeSem ''ReadMapInfo
 makeSem ''UpdateRegion
 
-runGameTurn :: 
-    PlayerId -> 
-    TVar Game ->      
-    Sem '[
-        UpdateRegion, 
-        ReadMapInfo, 
-        State GameMap,
-        Error PlayerMoveInputError, 
-        Reader (TVar Game), 
-        Reader PlayerId,
-        Lift STM
-    ] a ->
-    STM (Either PlayerMoveInputError a)
-runGameTurn playerId game = 
-    runM . 
-    runReader @PlayerId playerId . 
-    runReader @(TVar Game) game . 
-    runError .
-    runGameMapState .
-    runReadMapInfo . 
-    runUpdateRegion
-    
-
 runReadMapInfo :: Members '[State GameMap, Error PlayerMoveInputError] r => Sem (ReadMapInfo ': r) a -> Sem r a
 runReadMapInfo = interpret $ \(GetRegionInfo regionId) -> do
     lookupResult <- gets (Data.Map.lookup regionId)
@@ -134,8 +111,7 @@ runTVarGame sem = do
     game <- lookupWithInput
     runReader game sem
 
-
-update :: 
+runGameTurn :: 
     Members '[
         Reader GameHub, 
         Input GameId, 
@@ -150,7 +126,7 @@ update ::
         r
      ) a ->
     Sem r a
-update = 
+runGameTurn = 
     runTVarGame . 
     runGameMapState' .
     runReadMapInfo . 
