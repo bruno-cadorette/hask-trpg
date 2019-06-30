@@ -36,6 +36,8 @@ dependencies:
 - servant-checked-exceptions
 - polysemy
 - polysemy-plugin
+- http-types
+- servant-foreign
 
 library:
   source-dirs: src 

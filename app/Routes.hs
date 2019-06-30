@@ -7,6 +7,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
 
 
 module Routes where
@@ -18,7 +19,9 @@ import Lucid.Base
 import Game.Effects
 import Game.Logic
 import Region
+import Servant.Checked.Exceptions
 import PlayerManagement
+import Servant.Foreign
 
 type FileApi = "static" :> Raw
 
@@ -29,13 +32,21 @@ type Website = Get '[HTML] (Html ()) -- :<|>
             Get '[JSON] GameMap
     -}
 
+instance HasForeign lang ftype api
+  => HasForeign lang ftype ((Throws a) :> api) where
+  type Foreign ftype ((Throws a) :> api) = Foreign ftype api
+
+  foreignFor lang ftype Proxy req =
+    foreignFor lang ftype (Proxy :: Proxy api) req
+
+
 type GameApi = 
     "game" :> (
         Get '[JSON] [GameId] :<|>
-        Capture "gameId" GameId :> (
+        Capture "gameId" GameId :> Throws (KeyNotFoundError GameId) :> (
             "gameState" :> (
                 Get '[JSON] GameMap :<|>
-                Capture "playerId" PlayerId :> ReqBody '[JSON] [GameAction] :> Post '[JSON] ()
+                Capture "playerId" PlayerId :> ReqBody '[JSON] [Move] :> Throws PlayerMoveInputError :> Post '[JSON] ()
             ) :<|>
             "borders" :> Get '[JSON] Borders
         )

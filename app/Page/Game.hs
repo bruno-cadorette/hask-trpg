@@ -14,7 +14,7 @@ pageTemplate title pageBody = doctypehtml_ (headTemplate title <> body_ pageBody
 
 getGameHub = pure mempty
 
-gameList :: RiskyT(Html ())
+gameList :: [Html ()]
 gameList = do
     gameIds <- fmap keys getGameHub
     return $ pageTemplate "Game List" $ foldMap (\(GameId id) -> li_ $ toHtml $ show id) gameIds

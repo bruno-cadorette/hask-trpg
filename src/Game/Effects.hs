@@ -27,6 +27,8 @@ import Polysemy
 import Polysemy.Error
 import Polysemy.Reader
 import Polysemy.Input
+import Servant.Checked.Exceptions
+import Network.HTTP.Types.Status
 
 data TurnInfo = TurnInfo { _gameMap :: GameMap, _reinforcement :: Map PlayerId Int, _turnNumber :: Int }
 
@@ -40,9 +42,6 @@ type GameHub = Map GameId (TVar Game)
 
 newtype GameId = GameId Integer deriving (Num, Eq, Ord, Show, FromHttpApiData, Generic, ToJSON)
 
-newtype RiskyT a = RiskyT (Identity a)
-    deriving (Functor, Applicative, Monad)
-
 data ReadMapInfo m a where
     GetRegionInfo :: RegionId -> ReadMapInfo m RegionInfo
 
@@ -54,12 +53,22 @@ data PlayerMoveInputError =
     SelectedEmptySource RegionId |
     RegionDontExist RegionId |
     MoveTooMuch RegionId Army Army
-    deriving (Show)
+    deriving (Show, Generic)
 
+instance FromJSON PlayerMoveInputError
+instance ToJSON PlayerMoveInputError
 instance Exception PlayerMoveInputError
+instance ErrStatus (PlayerMoveInputError) where
+    toErrStatus _ = internalServerError500
 
 makeSem ''ReadMapInfo
 makeSem ''UpdateRegion
+
+newtype KeyNotFoundError k = KeyNotFoundError k deriving (Generic)
+instance FromJSON a => FromJSON (KeyNotFoundError a) 
+instance ToJSON a => ToJSON (KeyNotFoundError a)
+instance ErrStatus (KeyNotFoundError k) where
+    toErrStatus _ = notFound404 
 
 runReadMapInfo :: Members '[State GameMap, Error PlayerMoveInputError] r => Sem (ReadMapInfo ': r) a -> Sem r a
 runReadMapInfo = interpret $ \(GetRegionInfo regionId) -> do
@@ -76,29 +85,17 @@ runUpdateRegion = interpret $ \case
     (ChangeFaction regionId newFac newPops) -> 
         modify (Data.Map.insert regionId (RegionInfo (Just newFac) newPops))
 
-
-runGameMapState :: Members '[Lift STM, Reader (TVar Game)] r => Sem (State GameMap ': r) a -> Sem r a
-runGameMapState = interpret $ \case
-    Get   -> do
-        var <- ask
-        sendM $ fmap (view (turnInfo.gameMap)) $ readTVar var
-    Put s -> do
-        var <- ask
-        sendM $ modifyTVar var (set (turnInfo.gameMap) s)    
-
-newtype KeyNotFoundError k = KeyNotFoundError k
  
-lookupWithInput :: Ord k => Members '[Reader (Map k a), Input k, Error (KeyNotFoundError k)] r => Sem r a
-lookupWithInput = do
-    key <- input 
+lookupReaderMap :: Ord k => Members '[Reader (Map k a), Error (KeyNotFoundError k)] r => k -> Sem r a
+lookupReaderMap key = do
     result <- asks (Data.Map.lookup key)
     case result of
         Just r  -> pure r
         Nothing -> throw (KeyNotFoundError key)
 
 
-runGameMapState' :: Members '[Lift STM] r => Sem (State GameMap ': r) a -> Sem (Reader (TVar Game) ': r) a
-runGameMapState' = reinterpret $ \case
+runGameMapState :: Members '[Lift STM] r => Sem (State GameMap ': r) a -> Sem (Reader (TVar Game) ': r) a
+runGameMapState = reinterpret $ \case
     Get   -> do
         var <- ask
         sendM $ fmap (view (turnInfo.gameMap)) $ readTVar var
@@ -108,7 +105,8 @@ runGameMapState' = reinterpret $ \case
 
 runTVarGame :: Members '[Input GameId, Reader GameHub,  Error (KeyNotFoundError GameId)] r => Sem (Reader (TVar Game) ': r) a -> Sem r a
 runTVarGame sem = do
-    game <- lookupWithInput
+    key <- input
+    game <- lookupReaderMap key
     runReader game sem
 
 runGameTurn :: 
@@ -128,6 +126,6 @@ runGameTurn ::
     Sem r a
 runGameTurn = 
     runTVarGame . 
-    runGameMapState' .
+    runGameMapState .
     runReadMapInfo . 
     runUpdateRegion

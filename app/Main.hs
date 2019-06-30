@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -8,6 +9,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TupleSections #-}
+{-# OPTIONS_GHC -fplugin=Polysemy.Plugin #-}
 
 module Main where
 
@@ -18,7 +20,7 @@ import Servant.HTML.Lucid
 import Servant
 import Servant.Server.StaticFiles
 import Network.Wai.Handler.Warp
-
+import Control.Lens
 import Data.List
 import Data.Maybe
 import GHC.Generics
@@ -38,48 +40,76 @@ import Polysemy
 import Polysemy.Error
 import Polysemy.Input
 import Polysemy.Reader
+import Control.Monad.IO.Class
+import Servant.Checked.Exceptions
+import Data.Either
+import Control.Monad
 
-newtype Risky a = Risky a
 
-commute :: Either a (Either b c) -> Either (Either a b) c
-commute (Right a) = 
-    case a of
-        Right x -> Right x
-        Left x -> Left (Right x)
-commute (Left x) = Left (Left x)
-runErrors = fmap commute . runError @(KeyNotFoundError GameId) . runError @PlayerMoveInputError
 
-getGameIds :: RiskyT [GameId]
-getGameIds = undefined-- ask >>= liftIO . fmap keys . readTVarIO
+type Risky = Sem '[Reader GameHub, Lift STM]
 
-getGameState = undefined--fmap gameMap . getGame
+risky :: Risky ()
+risky = pure ()
 
-runRiskyT = undefined
+eitherAddError :: IsMember e es => Either e a -> Envelope es a
+eitherAddError = either toErrEnvelope toSuccEnvelope
 
-mapBorders = undefined--fmap gameBorders . getGameIds
+runErrorToEnv :: IsMember e es => Sem (Error e ': r) a -> Sem r (Envelope es a) 
+runErrorToEnv = fmap eitherAddError . runError
+
+runErrors :: 
+    IsMember (KeyNotFoundError (GameId)) es => 
+    IsMember PlayerMoveInputError es => 
+    Sem (Error PlayerMoveInputError ': Error (KeyNotFoundError (GameId)) ': r) a -> 
+    Sem r (Envelope es a)
+runErrors = fmap join . runErrorToEnv @(KeyNotFoundError GameId) . runErrorToEnv @PlayerMoveInputError
+
+
+getGame :: Members '[Reader GameHub, Lift STM, Error (KeyNotFoundError GameId)] r => GameId -> Sem r Game
+getGame gameId = do 
+    game <- lookupReaderMap gameId
+    sendM $ readTVar game
+
+getGameIds :: Risky [GameId]
+getGameIds = asks keys
+
+getGameState :: GameId -> Risky (Envelope '[KeyNotFoundError GameId] GameMap)
+getGameState = runErrorToEnv . fmap (view $ turnInfo.gameMap) . getGame
+
+
+mapBorders :: GameId -> Risky (Envelope '[KeyNotFoundError GameId] Borders)
+mapBorders = runErrorToEnv . fmap (_gameBorders) . getGame
 
 actionOrders :: [(PlayerId, [GameAction])] -> [(PlayerId, GameAction)]
 actionOrders = concat . transpose . fmap (\(pid, as) -> fmap (pid,) as)
 
-updateGameMap :: GameId -> PlayerId -> [Move] -> GameHub -> STM ((Either (Either (KeyNotFoundError GameId) PlayerMoveInputError) ()))
-updateGameMap gameId playerId moves hub = 
-    runM $ runReader playerId $ runConstInput gameId $ runErrors $ runReader hub $ runGameTurn $ traverse_ handleMove moves
+
+
+updateGameMap :: GameId -> PlayerId -> [Move] -> Risky (Envelope '[KeyNotFoundError GameId, PlayerMoveInputError] ())
+updateGameMap gameId playerId moves = 
+    runErrors $ runReader playerId $ runConstInput gameId $ runGameTurn $ traverse_ handleMove moves
 
 gameApi gameId = (getGameState gameId :<|> updateGameMap gameId) :<|> mapBorders gameId
 
-riskyApi :: ServerT FullApi RiskyT
-riskyApi = undefined--(pure game) :<|> serveStaticFiles :<|> getGameIds :<|> gameApi  
+
+riskyApi :: ServerT FullApi Risky
+riskyApi = (pure game) :<|> serveStaticFiles :<|> getGameIds :<|> gameApi  
 
 riskyServer region = hoistServer (Proxy :: Proxy FullApi) (riskyTToHandler region) riskyApi
 
 writeJSFiles :: IO ()
 writeJSFiles = writeJSForAPI (Proxy :: Proxy GameApi) vanillaJS "/home/bruno/git/risky/app/static/api.js"
 
-serveStaticFiles :: ServerT FileApi RiskyT
+
+
+serveStaticFiles :: ServerT FileApi Risky
 serveStaticFiles = serveDirectoryWebApp "/home/bruno/git/risky/app/static"
 
-riskyTToHandler :: TVar GameHub -> RiskyT a -> Handler a
-riskyTToHandler newRegion r = undefined-- liftIO $ runReaderT (runRiskyT r) newRegion
+riskyTToHandler :: TVar GameHub -> Risky a -> Handler a
+riskyTToHandler hubVar r = liftIO $ atomically $ do
+    hub <- readTVar hubVar
+    runM $ runReader hub r
 
 app region = serve (Proxy :: Proxy FullApi) (riskyServer region)
 
@@ -90,4 +120,3 @@ main = do
     newGame <- newTVarIO $ Data.Map.fromList [(1, initGame)]
     writeJSFiles
     Network.Wai.Handler.Warp.run 8081 (app newGame)
-
