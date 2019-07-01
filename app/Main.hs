@@ -106,17 +106,16 @@ writeJSFiles = writeJSForAPI (Proxy :: Proxy GameApi) vanillaJS "/home/bruno/git
 serveStaticFiles :: ServerT FileApi Risky
 serveStaticFiles = serveDirectoryWebApp "/home/bruno/git/risky/app/static"
 
-riskyTToHandler :: TVar GameHub -> Risky a -> Handler a
-riskyTToHandler hubVar r = liftIO $ atomically $ do
-    hub <- readTVar hubVar
-    runM $ runReader hub r
+riskyTToHandler :: GameHub -> Risky a -> Handler a
+riskyTToHandler hub r = liftIO $ atomically $ runM $ runReader hub r
 
 app region = serve (Proxy :: Proxy FullApi) (riskyServer region)
 
-initGame = undefined--Game (borders 15 15) (baseRegions 15 15) (fromList [(PlayerId 1, 2), (PlayerId 2, 2)])
+initGame = Game (borders 15 15) (TurnInfo (baseRegions 15 15) (fromList [(PlayerId 1, 2), (PlayerId 2, 2)]) 0)
 
 main :: IO ()
 main = do
-    newGame <- newTVarIO $ Data.Map.fromList [(1, initGame)]
+    game <- newTVarIO initGame
+    let newGame = Data.Map.fromList [(1, game)]
     writeJSFiles
     Network.Wai.Handler.Warp.run 8081 (app newGame)

@@ -28,15 +28,15 @@ function selectCounty(newElem) {
 }
 
 function move(id1, id2) {
-    if (countiesInfo[id1].faction != player) {
+    if (countiesInfo[id1]._faction != player) {
         alert("You can't move thoses troops because it belong to another faction")
         return
     }
-    let migratingPopulation = prompt("How much troop do you want to move? (origin: " + countiesInfo[id1].population + "), destination: " + countiesInfo[id2].population + ")")
+    let migratingPopulation = prompt("How much troop do you want to move? (origin: " + countiesInfo[id1]._population + "), destination: " + countiesInfo[id2]._population + ")")
     if (!migratingPopulation) {
         return
     }
-    if (migratingPopulation > countiesInfo[id1].population) {
+    if (migratingPopulation > countiesInfo[id1]._population) {
         move(id1, id2)
     }
     else {
@@ -65,11 +65,13 @@ function cancelSelection() {
 
 function commit(){
     console.log(turnActions)
-    postGameByGameIdGameStateByPlayerId(gameId, player, turnActions, g =>{
-        countiesInfo = g
-        turnActions = []
-        document.getElementById("actions").innerHTML = ""
-        updateMap()
+    postGameByGameIdGameStateByPlayerId(gameId, player, turnActions, _ =>{
+        getGameByGameIdGameState(gameId, g => {
+            countiesInfo = g
+            turnActions = []
+            document.getElementById("actions").innerHTML = ""
+            updateMap()
+        })
     },console.log);
 }
 function getPositionFromId(id) {
@@ -118,17 +120,18 @@ function updateMap() {
     let allCounty = document.getElementsByClassName("county")
     for (var i = 0; i < allCounty.length; i++) {
         var info = countiesInfo[allCounty[i].id]
-        allCounty[i].dataset.faction = info.faction;
-        allCounty[i].innerHTML = info.population;
+        console.log(info)
+        allCounty[i].dataset.faction = info._faction;
+        allCounty[i].innerHTML = info._population;
     }
 }
 
 function init(){
     console.log("init")
     getGameByGameIdBorders(gameId, b => {
-        borders = b
+        borders = b.data
         getGameByGameIdGameState(gameId, g => {
-            countiesInfo = g
+            countiesInfo = g.data
             drawMap();
             updateMap()
         })
