@@ -50,10 +50,10 @@ data UpdateRegion m a where
     ChangeFaction :: RegionId -> PlayerId -> Army -> UpdateRegion m ()
 
 data PlayerMoveInputError =
-    SelectedEmptySource RegionId |
+    NotPlayerOwned RegionId |
     RegionDontExist RegionId |
     MoveTooMuch RegionId Army Army
-    deriving (Show, Generic)
+    deriving (Show, Generic, Eq)
 
 instance FromJSON PlayerMoveInputError
 instance ToJSON PlayerMoveInputError
@@ -127,5 +127,19 @@ runGameTurn ::
 runGameTurn = 
     runTVarGame . 
     runGameMapState .
+    runLogicPure
+
+runLogicPure ::
+    Members '[ 
+        State GameMap,
+        Error PlayerMoveInputError
+    ] r => 
+    Sem (
+        UpdateRegion ':
+        ReadMapInfo ':
+        r
+     ) a ->
+    Sem r a
+runLogicPure = 
     runReadMapInfo . 
     runUpdateRegion

@@ -14,8 +14,7 @@ newtype RegionId = RegionId String deriving (Show, Eq, Ord, FromJSON, ToJSON, To
 newtype Borders = Borders (Map RegionId [RegionId]) deriving (FromJSON, ToJSON)
 newtype FactionId = FactionId Integer deriving (Show, Eq, Ord, FromJSON, ToJSON)
 newtype Army = Army Integer deriving (Show, Eq, Ord, FromJSON, ToJSON, Num)
-
-data RegionInfo = RegionInfo {_faction :: Maybe PlayerId, _population :: Army} deriving(Show, Generic)
+data RegionInfo = RegionInfo {_faction :: Maybe PlayerId, _population :: Army} deriving(Show, Generic, Eq)
 
 instance FromJSON RegionInfo
 instance ToJSON RegionInfo

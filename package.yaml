@@ -38,6 +38,7 @@ dependencies:
 - polysemy-plugin
 - http-types
 - servant-foreign
+- hspec
 
 library:
   source-dirs: src 
@@ -50,6 +51,8 @@ executables:
   risky-exe:
     main:                Main.hs
     source-dirs:         app
+    dependencies:
+    - risky
     ghc-options: 
     - -O2 
     - -flate-specialise 
