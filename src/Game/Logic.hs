@@ -40,9 +40,12 @@ instance ToJSON GameAction
 
 type MoveEffects = '[UpdateRegion, Error PlayerMoveInputError, ReadMapInfo, Reader PlayerId] 
 
-updateAttackingRegion :: Members '[UpdateRegion, Error PlayerMoveInputError] r => Move -> RegionInfo -> Sem r ()
-updateAttackingRegion (Move originId _ troopsToMove) (RegionInfo _ baseTroops) =   
-    if baseTroops >= troopsToMove then
+updateAttackingRegion :: Members '[UpdateRegion, Error PlayerMoveInputError, Reader PlayerId] r => Move -> RegionInfo -> Sem r ()
+updateAttackingRegion (Move originId _ troopsToMove) (RegionInfo faction baseTroops) = do
+    playerId <- getCurrentPlayerId
+    if Just playerId /= faction then
+        throw (NotPlayerOwned originId)
+    else if baseTroops >= troopsToMove then
         updatePopulation originId (baseTroops - troopsToMove)
     else
         throw (MoveTooMuch originId baseTroops troopsToMove)

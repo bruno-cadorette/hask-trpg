@@ -1,7 +1,8 @@
-resolver: nightly-2019-06-20
-
+resolver: nightly-2019-07-07
 packages:
 - .
 extra-deps:
 - servant-checked-exceptions-2.1.0.0@sha256:798d86ddf11c9d3089e55994ba9b2b6c21161b5638e29d6530e89b20d24aa89f,3985
 - servant-checked-exceptions-core-2.1.0.0@sha256:52fefda2686455269b5a6f81815b8668621b5e9a0ddf5ea1444be50af7a5f263,3194
+- polysemy-0.7.0.0
+- polysemy-plugin-0.2.2.0 
