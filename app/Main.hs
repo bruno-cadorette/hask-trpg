@@ -88,7 +88,7 @@ actionOrders = concat . transpose . fmap (\(pid, as) -> fmap (pid,) as)
 
 updateGameMap :: GameId -> PlayerId -> [Move] -> Risky (Envelope '[KeyNotFoundError GameId, PlayerMoveInputError] ())
 updateGameMap gameId playerId moves = 
-    runErrors $ runReader playerId $ runConstInput gameId $ runGameTurn $ traverse_ handleMove moves
+    runErrors $ runReader playerId $ runConstInput gameId $ runGameTurn $ runLogicPure $ traverse_ handleMove moves
 
 gameApi gameId = (getGameState gameId :<|> updateGameMap gameId) :<|> mapBorders gameId
 

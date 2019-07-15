@@ -30,7 +30,7 @@ import Polysemy.Input
 import Servant.Checked.Exceptions
 import Network.HTTP.Types.Status
 
-data TurnInfo = TurnInfo { _gameMap :: GameMap, _reinforcement :: Map PlayerId Int, _turnNumber :: Int }
+data TurnInfo = TurnInfo { _gameMap :: GameMap, _maxReinforcement :: Map PlayerId Int, _turnNumber :: Int }
 
 makeLenses ''TurnInfo
 
@@ -45,14 +45,20 @@ newtype GameId = GameId Integer deriving (Num, Eq, Ord, Show, FromHttpApiData, G
 data ReadMapInfo m a where
     GetRegionInfo :: RegionId -> ReadMapInfo m RegionInfo
 
+
+data CurrentPlayerInfo m a where
+    GetCurrentPlayerId :: CurrentPlayerInfo m PlayerId
+    GetMaxReinforcement :: CurrentPlayerInfo m Int
+
 data UpdateRegion m a where
     UpdatePopulation :: RegionId -> Army -> UpdateRegion m ()
-    ChangeFaction :: RegionId -> PlayerId -> Army -> UpdateRegion m ()
+    ChangeFaction :: RegionId -> PlayerId -> UpdateRegion m ()
 
 data PlayerMoveInputError =
     NotPlayerOwned RegionId |
     RegionDontExist RegionId |
-    MoveTooMuch RegionId Army Army
+    MoveTooMuch RegionId | 
+    TooMuchReinforcement 
     deriving (Show, Generic, Eq)
 
 instance FromJSON PlayerMoveInputError
@@ -63,6 +69,7 @@ instance ErrStatus (PlayerMoveInputError) where
 
 makeSem ''ReadMapInfo
 makeSem ''UpdateRegion
+makeSem ''CurrentPlayerInfo
 
 newtype KeyNotFoundError k = KeyNotFoundError k deriving (Generic)
 instance FromJSON a => FromJSON (KeyNotFoundError a) 
@@ -70,20 +77,27 @@ instance ToJSON a => ToJSON (KeyNotFoundError a)
 instance ErrStatus (KeyNotFoundError k) where
     toErrStatus _ = notFound404 
 
-runReadMapInfo :: Members '[State GameMap, Error PlayerMoveInputError] r => Sem (ReadMapInfo ': r) a -> Sem r a
+runReadMapInfo :: Members '[State Game, Error PlayerMoveInputError] r => Sem (ReadMapInfo ': r) a -> Sem r a
 runReadMapInfo = interpret $ \(GetRegionInfo regionId) -> do
-    lookupResult <- gets (Data.Map.lookup regionId)
+    lookupResult <- gets (Data.Map.lookup regionId . view (turnInfo.gameMap))
     case lookupResult of
         Just region -> return region
         Nothing -> throw $ RegionDontExist regionId
 
 
-runUpdateRegion:: Members '[State GameMap] r => Sem (UpdateRegion ': r) a -> Sem r a
+runUpdateRegion:: Members '[State Game] r => Sem (UpdateRegion ': r) a -> Sem r a
 runUpdateRegion = interpret $ \case
     (UpdatePopulation regionId newPops) ->
-        modify (adjust (set population newPops) regionId)
-    (ChangeFaction regionId newFac newPops) -> 
-        modify (Data.Map.insert regionId (RegionInfo (Just newFac) newPops))
+        modify (over (turnInfo.gameMap) (adjust (over population ((+) newPops)) regionId))
+    (ChangeFaction regionId newFac) -> 
+        modify (over (turnInfo.gameMap) (adjust (set faction (Just newFac)) regionId))
+
+runCurrentPlayerInfo :: Members '[State Game, Reader PlayerId] r => Sem (CurrentPlayerInfo ': r) a -> Sem r a
+runCurrentPlayerInfo = interpret $ \case
+    GetCurrentPlayerId -> ask @PlayerId
+    GetMaxReinforcement -> do
+        playerId <- ask @PlayerId
+        fromMaybe 0 <$> gets (Data.Map.lookup playerId . view (turnInfo.maxReinforcement))
 
  
 lookupReaderMap :: Ord k => Members '[Reader (Map k a), Error (KeyNotFoundError k)] r => k -> Sem r a
@@ -93,15 +107,12 @@ lookupReaderMap key = do
         Just r  -> pure r
         Nothing -> throw (KeyNotFoundError key)
 
-
-runGameMapState :: Members '[Lift STM] r => Sem (State GameMap ': r) a -> Sem (Reader (TVar Game) ': r) a
-runGameMapState = reinterpret $ \case
-    Get   -> do
+runGameState :: Members '[Lift STM] r => Sem (State Game ': r) a -> Sem (Reader (TVar Game) ': r) a
+runGameState = reinterpret $ \case
+    Get     -> asks readTVar >>= sendM
+    Put s   -> do
         var <- ask
-        sendM $ fmap (view (turnInfo.gameMap)) $ readTVar var
-    Put s -> do
-        var <- ask
-        sendM $ modifyTVar var (set (turnInfo.gameMap) s)   
+        sendM $ modifyTVar var (const s) 
 
 runTVarGame :: Members '[Input GameId, Reader GameHub,  Error (KeyNotFoundError GameId)] r => Sem (Reader (TVar Game) ': r) a -> Sem r a
 runTVarGame sem = do
@@ -111,35 +122,35 @@ runTVarGame sem = do
 
 runGameTurn :: 
     Members '[
+        Reader PlayerId,
         Reader GameHub, 
         Input GameId, 
         Error (KeyNotFoundError GameId),
-        Error PlayerMoveInputError,
         Lift STM
     ] r => 
     Sem (
-        UpdateRegion ':
-        ReadMapInfo ':
-        State GameMap ':
+        State Game ':
         r
      ) a ->
     Sem r a
 runGameTurn = 
     runTVarGame . 
-    runGameMapState .
-    runLogicPure
+    runGameState
 
 runLogicPure ::
     Members '[ 
-        State GameMap,
+        State Game,
+        Reader PlayerId,
         Error PlayerMoveInputError
     ] r => 
     Sem (
         UpdateRegion ':
         ReadMapInfo ':
+        CurrentPlayerInfo ':
         r
      ) a ->
     Sem r a
 runLogicPure = 
+    runCurrentPlayerInfo .
     runReadMapInfo . 
     runUpdateRegion

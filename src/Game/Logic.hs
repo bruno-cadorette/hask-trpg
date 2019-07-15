@@ -20,6 +20,7 @@ import Polysemy.Input
 import Polysemy.Error
 import Game.Effects
 import Data.Foldable
+import Control.Monad
 
 
 data Move = Move {origin :: RegionId, destination :: RegionId, troops :: Army } deriving(Generic, Show)
@@ -32,49 +33,71 @@ data GameAction =
     
 
 data AttackingArmy = AttackingArmy PlayerId Army deriving (Show)
-getCurrentPlayerId :: Member (Reader PlayerId) r => Sem r PlayerId
-getCurrentPlayerId = ask
-
 instance FromJSON GameAction
 instance ToJSON GameAction
 
-type MoveEffects = '[UpdateRegion, Error PlayerMoveInputError, ReadMapInfo, Reader PlayerId] 
+type MoveEffects = '[UpdateRegion, Error PlayerMoveInputError, ReadMapInfo, CurrentPlayerInfo] 
 
-updateAttackingRegion :: Members '[UpdateRegion, Error PlayerMoveInputError, Reader PlayerId] r => Move -> RegionInfo -> Sem r ()
-updateAttackingRegion (Move originId _ troopsToMove) (RegionInfo faction baseTroops) = do
+isRegionOwnedByPlayer :: Members '[CurrentPlayerInfo, ReadMapInfo] r => RegionId -> Sem r Bool
+isRegionOwnedByPlayer regionId = do
     playerId <- getCurrentPlayerId
-    if Just playerId /= faction then
-        throw (NotPlayerOwned originId)
-    else if baseTroops >= troopsToMove then
-        updatePopulation originId (baseTroops - troopsToMove)
+    fac <- view faction <$> getRegionInfo regionId
+    return $ Just playerId == fac
+
+hasCapacityToMove :: Members '[ReadMapInfo] r => RegionId -> Army -> Sem r Bool
+hasCapacityToMove regionId army = do
+    pop <- view population <$> getRegionInfo regionId
+    return (pop >= army)
+
+areFromSameFactions :: Members '[ReadMapInfo] r => RegionId -> RegionId -> Sem r Bool
+areFromSameFactions regionId1 regionId2 = do
+    region1 <- getRegionInfo regionId1
+    region2 <- getRegionInfo regionId2
+    return $ region1^.faction == region2^.faction
+
+reinforce :: Members '[UpdateRegion] r => RegionId -> RegionId -> Army -> Sem r ()
+reinforce originId destinationId army = do
+    removeTroops originId army
+    addTroops destinationId army
+
+attack :: Members '[UpdateRegion, ReadMapInfo, CurrentPlayerInfo] r => RegionId -> RegionId -> Army -> Sem r ()
+attack region1 region2 army = do
+    removeTroops region1 army
+    population2 <- view population <$> getRegionInfo region2
+    if army > population2 then do
+        removeTroops region2 population2
+        playerId <- getCurrentPlayerId
+        changeFaction region2 playerId
+        addTroops region2 (army - population2)
     else
-        throw (MoveTooMuch originId baseTroops troopsToMove)
+        removeTroops region2 army
+        
 
-extractAttackingArmy :: Members MoveEffects r => Move -> Sem r AttackingArmy 
-extractAttackingArmy movement@(Move originId _ troops) = do
-    regionInfo <- getRegionInfo originId
-    playerId <- getCurrentPlayerId
-    updateAttackingRegion movement regionInfo
-    return $ AttackingArmy playerId troops
+addTroops :: Members '[UpdateRegion] r => RegionId -> Army -> Sem r ()
+addTroops regionId army = updatePopulation regionId army
 
-handleMove :: Members MoveEffects r => Move -> Sem r ()
-handleMove move@(Move originId destinationId attackingTroopsNumber) = do 
-    attackingArmy <- extractAttackingArmy move 
-    regionInfo <- getRegionInfo destinationId
-    invasion attackingArmy destinationId regionInfo
-    
-invasion :: Member UpdateRegion r => AttackingArmy -> RegionId -> RegionInfo -> Sem r ()
-invasion (AttackingArmy attackerFaction attackerTroops) regionId (RegionInfo defenderFaction defenderTroops)
-    | (Just attackerFaction) == defenderFaction =
-        updatePopulation regionId (attackerTroops + defenderTroops)
-    | defenderTroops - attackerTroops < 0 =
-        changeFaction regionId attackerFaction (attackerTroops - defenderTroops)
-    | otherwise =
-        updatePopulation regionId (defenderTroops - attackerTroops)
+removeTroops :: Members '[UpdateRegion] r => RegionId -> Army -> Sem r ()
+removeTroops regionId army = updatePopulation regionId (-army)
 
-reinforce :: GameMap -> GameMap
-reinforce = Map.map (\(RegionInfo f p) -> RegionInfo f (if f == Nothing then p else p + 1))
+ifM :: Monad m => m Bool -> m a -> m a -> m a
+ifM cond t f = cond >>= (\c -> if c then t else f)
 
-getNextReinforcement :: GameMap -> [(PlayerId, Int)]
-getNextReinforcement = fmap (\xs -> (head xs, length xs)) . group . sort . mapMaybe _faction . Map.elems
+handleMove :: Members '[UpdateRegion, Error PlayerMoveInputError, ReadMapInfo, CurrentPlayerInfo] r => Move -> Sem r ()
+handleMove (Move origin destination attackingTroopsNumber) = do
+    ifM (not <$> isRegionOwnedByPlayer origin) (throw (NotPlayerOwned origin)) $
+        ifM (not <$> hasCapacityToMove origin attackingTroopsNumber) (throw (MoveTooMuch origin)) $
+        ifM (areFromSameFactions origin destination) (reinforce origin destination attackingTroopsNumber) $
+        (attack origin destination attackingTroopsNumber)
 
+
+handleReinforcement :: Members '[CurrentPlayerInfo, UpdateRegion, ReadMapInfo, Error PlayerMoveInputError] r => [(RegionId, Int)] -> Sem r ()
+handleReinforcement xs = do
+    maxReinforcement <- getMaxReinforcement
+    if (sum $ fmap snd xs) > maxReinforcement then
+        throw TooMuchReinforcement
+    else
+        traverse_ (\(regionId, newTroops) -> 
+            ifM (isRegionOwnedByPlayer regionId) 
+                (addTroops regionId (Army newTroops))
+                (throw (NotPlayerOwned regionId))) xs
+        

@@ -20,17 +20,19 @@ import Data.Either
 import Control.Applicative
 import Test.QuickCheck
 import Test.Hspec
+import Control.Lens
 
+moveWithMock :: GameMap -> PlayerId -> Move -> Either PlayerMoveInputError GameMap
+moveWithMock testedMap playerId = 
+        fmap (view (turnInfo.gameMap)) . runLogicTest (Game (borders 15 15) (TurnInfo testedMap mempty 0)) playerId . handleMove
 
-moveWithMock gameMap playerId = runLogicTest gameMap playerId . handleMove
-
-runLogicTest :: GameMap -> PlayerId -> Sem '[UpdateRegion, ReadMapInfo, State GameMap, Reader PlayerId, Error PlayerMoveInputError] a -> Either PlayerMoveInputError GameMap
+runLogicTest :: Game -> PlayerId -> Sem '[UpdateRegion, ReadMapInfo, CurrentPlayerInfo, State Game, Reader PlayerId, Error PlayerMoveInputError] a -> Either PlayerMoveInputError Game
 runLogicTest initialState playerId = 
     run . runError @PlayerMoveInputError . runReader @PlayerId playerId . fmap fst . runState initialState . runLogicPure
 
 main :: IO ()
 main = hspec $ do
-    describe "Game.Logic" $ do
+    describe "Move tests" $ do
         let playerId = PlayerId 1
         let homeRegion = RegionId "1"
         let awayRegion = RegionId "2"
