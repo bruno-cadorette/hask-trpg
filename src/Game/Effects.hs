@@ -116,7 +116,7 @@ runGameState = reinterpret $ \case
 
 runTVarGame :: Members '[Input GameId, Reader GameHub,  Error (KeyNotFoundError GameId)] r => Sem (Reader (TVar Game) ': r) a -> Sem r a
 runTVarGame sem = do
-    key <- input
+    key <- input @GameId
     game <- lookupReaderMap key
     runReader game sem
 

@@ -22,6 +22,7 @@ import Region
 import Servant.Checked.Exceptions
 import PlayerManagement
 import Servant.Foreign
+import Servant.Auth.Server
 
 type FileApi = "static" :> Raw
 
@@ -39,6 +40,25 @@ instance HasForeign lang ftype api
   foreignFor lang ftype Proxy req =
     foreignFor lang ftype (Proxy :: Proxy api) req
 
+type PlayerAuthentication = Auth '[JWT] PlayerId 
+
+type GameManagement =
+    PlayerAuthentication :> ReqBody '[JSON] GameId :> Post '[JSON] Bool
+
+type FullApi' = 
+    PlayerAuthentication :>
+        "game" :> GameApi'
+        
+type GameApi' =
+    Get '[JSON] [GameId] :<|>
+    Capture "gameId" GameId :> Throws (KeyNotFoundError GameId) :> (
+        "gameState" :> (
+            Get '[JSON] GameMap :<|>
+            ReqBody '[JSON] [Move] :> Throws PlayerMoveInputError :> Post '[JSON] ()
+        ) :<|>
+        "borders" :> Get '[JSON] Borders
+    )
+        
 
 type GameApi = 
     "game" :> (

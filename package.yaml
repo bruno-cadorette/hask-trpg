@@ -38,6 +38,7 @@ dependencies:
 - polysemy-plugin
 - http-types
 - servant-foreign
+- servant-auth-server
 - hspec
 
 library:

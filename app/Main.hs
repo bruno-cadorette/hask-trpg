@@ -1,3 +1,7 @@
+
+
+
+
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -44,13 +48,15 @@ import Control.Monad.IO.Class
 import Servant.Checked.Exceptions
 import Data.Either
 import Control.Monad
+import Servant.Auth.Server
 
+
+instance ToJWT PlayerId
+instance FromJWT PlayerId
 
 
 type Risky = Sem '[Reader GameHub, Lift STM]
 
-risky :: Risky ()
-risky = pure ()
 
 eitherAddError :: IsMember e es => Either e a -> Envelope es a
 eitherAddError = either toErrEnvelope toSuccEnvelope
@@ -81,10 +87,6 @@ getGameState = runErrorToEnv . fmap (view $ turnInfo.gameMap) . getGame
 mapBorders :: GameId -> Risky (Envelope '[KeyNotFoundError GameId] Borders)
 mapBorders = runErrorToEnv . fmap (_gameBorders) . getGame
 
-actionOrders :: [(PlayerId, [GameAction])] -> [(PlayerId, GameAction)]
-actionOrders = concat . transpose . fmap (\(pid, as) -> fmap (pid,) as)
-
-
 
 updateGameMap :: GameId -> PlayerId -> [Move] -> Risky (Envelope '[KeyNotFoundError GameId, PlayerMoveInputError] ())
 updateGameMap gameId playerId moves = 
@@ -106,16 +108,22 @@ writeJSFiles = writeJSForAPI (Proxy :: Proxy GameApi) vanillaJS "/home/bruno/git
 serveStaticFiles :: ServerT FileApi Risky
 serveStaticFiles = serveDirectoryWebApp "/home/bruno/git/risky/app/static"
 
+
+initGame = Game (borders 15 15) (TurnInfo (baseRegions 15 15) (fromList [(PlayerId 1, 2), (PlayerId 2, 2)]) 0)
+
+
+
+
 riskyTToHandler :: GameHub -> Risky a -> Handler a
 riskyTToHandler hub r = liftIO $ atomically $ runM $ runReader hub r
 
-app region = serve (Proxy :: Proxy FullApi) (riskyServer region)
 
-initGame = Game (borders 15 15) (TurnInfo (baseRegions 15 15) (fromList [(PlayerId 1, 2), (PlayerId 2, 2)]) 0)
+app region = serve (Proxy :: Proxy FullApi) (riskyServer region)
 
 main :: IO ()
 main = do
     game <- newTVarIO initGame
+    jwtConfig <- fmap defaultJWTSettings generateKey
     let newGame = Data.Map.fromList [(1, game)]
     writeJSFiles
     Network.Wai.Handler.Warp.run 8081 (app newGame)
