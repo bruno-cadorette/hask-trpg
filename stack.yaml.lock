@@ -19,22 +19,22 @@ packages:
   original:
     hackage: servant-checked-exceptions-core-2.1.0.0@sha256:52fefda2686455269b5a6f81815b8668621b5e9a0ddf5ea1444be50af7a5f263,3194
 - completed:
-    hackage: polysemy-0.7.0.0@sha256:e080487a6f923d91fe8363cb901770c38ce96c2011f79cae9c5bc5a2e23eb454,5362
+    hackage: polysemy-1.2.1.0@sha256:5b8cc3befbd10b8b05354a35dc71d24041c0dad15f28c9301f199b00916b69b6,5776
     pantry-tree:
-      size: 2985
-      sha256: e0662eeb77b93e0a96f3841003602513ab6e06278cb06327a5422dffa7cbb935
+      size: 3622
+      sha256: ede1962350f5a77ccdeb0f194bca18b88fc1113dfa22bd3a6d3143851e222c15
   original:
-    hackage: polysemy-0.7.0.0
+    hackage: polysemy-1.2.1.0@sha256:5b8cc3befbd10b8b05354a35dc71d24041c0dad15f28c9301f199b00916b69b6,5776
 - completed:
-    hackage: polysemy-plugin-0.2.2.0@sha256:2116c574077b89e9fce2431dc6f58682f9c3f6c6d151442a7a23b2e542d695d6,2563
+    hackage: polysemy-zoo-0.6.0.1@sha256:a1f545d34cb7cfa7c7b3511a1ff21843473d8b7d1f4d1570cda2cdc4616e5696,3852
     pantry-tree:
-      size: 933
-      sha256: ad17308233f6f63a5eebcdfb7f4811a5c605af1ddd47929619018bc74b8c552e
+      size: 3012
+      sha256: a40bd9842802ec2d95b9659d6319aa03fdb707c68cb323ca3ca9115a0dfed246
   original:
-    hackage: polysemy-plugin-0.2.2.0
+    hackage: polysemy-zoo-0.6.0.1@sha256:a1f545d34cb7cfa7c7b3511a1ff21843473d8b7d1f4d1570cda2cdc4616e5696,3852
 snapshots:
 - completed:
-    size: 516734
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2019/7/7.yaml
-    sha256: 0157ee1735e130131815039752541d322ff56979c2a827bc63ecd1ce0d8ffcbb
-  original: nightly-2019-07-07
+    size: 523700
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/14/7.yaml
+    sha256: 8e3f3c894be74d71fa4bf085e0a8baae7e4d7622d07ea31a52736b80f8b9bb1a
+  original: lts-14.7

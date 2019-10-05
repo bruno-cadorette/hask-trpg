@@ -55,7 +55,7 @@ instance ToJWT PlayerId
 instance FromJWT PlayerId
 
 
-type Risky = Sem '[Reader GameHub, Lift STM]
+type Risky = Sem '[Reader GameHub, Embed STM]
 
 
 eitherAddError :: IsMember e es => Either e a -> Envelope es a
@@ -72,10 +72,10 @@ runErrors ::
 runErrors = fmap join . runErrorToEnv @(KeyNotFoundError GameId) . runErrorToEnv @PlayerMoveInputError
 
 
-getGame :: Members '[Reader GameHub, Lift STM, Error (KeyNotFoundError GameId)] r => GameId -> Sem r Game
+getGame :: Members '[Reader GameHub, Embed STM, Error (KeyNotFoundError GameId)] r => GameId -> Sem r Game
 getGame gameId = do 
     game <- lookupReaderMap gameId
-    sendM $ readTVar game
+    embed $ readTVar game
 
 getGameIds :: Risky [GameId]
 getGameIds = asks keys
@@ -90,7 +90,7 @@ mapBorders = runErrorToEnv . fmap (_gameBorders) . getGame
 
 updateGameMap :: GameId -> PlayerId -> [Move] -> Risky (Envelope '[KeyNotFoundError GameId, PlayerMoveInputError] ())
 updateGameMap gameId playerId moves = 
-    runErrors $ runReader playerId $ runConstInput gameId $ runGameTurn $ runLogicPure $ traverse_ handleMove moves
+    runErrors $ runReader playerId $ runInputConst gameId $ runGameTurn $ runLogicPure $ traverse_ handleMove moves
 
 gameApi gameId = (getGameState gameId :<|> updateGameMap gameId) :<|> mapBorders gameId
 

@@ -1,8 +1,8 @@
-resolver: nightly-2019-07-07
+resolver: lts-14.7
 packages:
 - .
 extra-deps:
 - servant-checked-exceptions-2.1.0.0@sha256:798d86ddf11c9d3089e55994ba9b2b6c21161b5638e29d6530e89b20d24aa89f,3985
 - servant-checked-exceptions-core-2.1.0.0@sha256:52fefda2686455269b5a6f81815b8668621b5e9a0ddf5ea1444be50af7a5f263,3194
-- polysemy-0.7.0.0
-- polysemy-plugin-0.2.2.0 
+- polysemy-1.2.1.0@sha256:5b8cc3befbd10b8b05354a35dc71d24041c0dad15f28c9301f199b00916b69b6,5776
+- polysemy-zoo-0.6.0.1@sha256:a1f545d34cb7cfa7c7b3511a1ff21843473d8b7d1f4d1570cda2cdc4616e5696,3852

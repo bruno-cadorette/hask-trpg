@@ -22,6 +22,7 @@ import Game.Effects
 import Data.Foldable
 import Control.Monad
 
+data SoldierAction = SoldierAction {_origin :: RegionId, _destination :: RegionId, _attack :: Maybe RegionId} deriving(Generic, Show)
 
 data Move = Move {origin :: RegionId, destination :: RegionId, troops :: Army } deriving(Generic, Show)
 
@@ -31,8 +32,6 @@ instance ToJSON Move
 data GameAction = 
     GameAction {movements :: [Move], playerReinforcement :: [(RegionId, Int)]} deriving(Generic, Show)
     
-
-data AttackingArmy = AttackingArmy PlayerId Army deriving (Show)
 instance FromJSON GameAction
 instance ToJSON GameAction
 
@@ -43,6 +42,14 @@ isRegionOwnedByPlayer regionId = do
     playerId <- getCurrentPlayerId
     fac <- view faction <$> getRegionInfo regionId
     return $ Just playerId == fac
+
+isRegionOccupied :: Member ReadMapInfo r => RegionId -> Sem r Bool
+isRegionOccupied regionId = (isNothing . view faction) <$> getRegionInfo regionId
+
+isSoldierMovingTooMuch :: Member ReadMapInfo r => RegionId -> RegionId -> Sem r Bool
+isSoldierMovingTooMuch regionId1 regionId2 = do
+    maxDistance <- preview (currentSoldier._Just.movement) <$> getRegionInfo regionId1
+    return $ Just (distance regionId1 regionId2) <= maxDistance
 
 hasCapacityToMove :: Members '[ReadMapInfo] r => RegionId -> Army -> Sem r Bool
 hasCapacityToMove regionId army = do
@@ -83,12 +90,18 @@ ifM :: Monad m => m Bool -> m a -> m a -> m a
 ifM cond t f = cond >>= (\c -> if c then t else f)
 
 handleMove :: Members '[UpdateRegion, Error PlayerMoveInputError, ReadMapInfo, CurrentPlayerInfo] r => Move -> Sem r ()
-handleMove (Move origin destination attackingTroopsNumber) = do
+handleMove (Move origin destination attackingTroopsNumber) =
     ifM (not <$> isRegionOwnedByPlayer origin) (throw (NotPlayerOwned origin)) $
-        ifM (not <$> hasCapacityToMove origin attackingTroopsNumber) (throw (MoveTooMuch origin)) $
-        ifM (areFromSameFactions origin destination) (reinforce origin destination attackingTroopsNumber) $
-        (attack origin destination attackingTroopsNumber)
+    ifM (not <$> hasCapacityToMove origin attackingTroopsNumber) (throw (MoveTooMuch origin)) $
+    ifM (areFromSameFactions origin destination) (reinforce origin destination attackingTroopsNumber) $
+    (attack origin destination attackingTroopsNumber)
 
+soldierMove :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => SoldierAction -> Sem r ()
+soldierMove (SoldierAction origin destination _) = 
+    ifM (not <$> isRegionOwnedByPlayer origin) (throw (NotPlayerOwned origin)) $ 
+    ifM (isRegionOccupied destination) (throw (RegionOccupied destination)) $
+    ifM (isSoldierMovingTooMuch origin destination) (throw (MoveTooMuch origin)) $ 
+    (moveM origin destination)
 
 handleReinforcement :: Members '[CurrentPlayerInfo, UpdateRegion, ReadMapInfo, Error PlayerMoveInputError] r => [(RegionId, Int)] -> Sem r ()
 handleReinforcement xs = do
