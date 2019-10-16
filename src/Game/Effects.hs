@@ -25,18 +25,19 @@ import Control.Lens
 import Control.Exception.Base(Exception)
 import Polysemy
 import Polysemy.Error
+import Polysemy.State
 import Polysemy.Reader
+import Polysemy.Internal.Combinators
 import Polysemy.Input
 import Servant.Checked.Exceptions
 import Network.HTTP.Types.Status
-import Polysemy.ConstraintAbsorber.MonadState
-import qualified Control.Monad.State.Lazy as MTL
+import qualified Control.Monad.State.Lazy as Mtl
 
-data TurnInfo = TurnInfo { _gameMap :: GameMap, _maxReinforcement :: Map PlayerId Int, _turnNumber :: Int }
+data TurnInfo = TurnInfo { _maxReinforcement :: Map PlayerId Int, _turnNumber :: Int }
 
 makeLenses ''TurnInfo
 
-data Game = Game { _gameBorders :: Borders, _turnInfo :: TurnInfo}
+data Game = Game { _gameBorders :: Borders, _turnInfo :: TurnInfo, _unitPositions :: UnitPositions}
 
 makeLenses ''Game
 
@@ -44,17 +45,9 @@ type GameHub = Map GameId (TVar Game)
 
 newtype GameId = GameId Integer deriving (Num, Eq, Ord, Show, FromHttpApiData, Generic, ToJSON)
 
-data ReadMapInfo m a where
-    GetRegionInfo :: RegionId -> ReadMapInfo m RegionInfo
-
-
 data CurrentPlayerInfo m a where
     GetCurrentPlayerId :: CurrentPlayerInfo m PlayerId
     GetMaxReinforcement :: CurrentPlayerInfo m Int
-
-data UpdateRegion m a where
-    UpdatePopulation :: RegionId -> Army -> UpdateRegion m ()
-    ChangeFaction :: RegionId -> PlayerId -> UpdateRegion m ()
 
 data PlayerMoveInputError =
     NotPlayerOwned RegionId |
@@ -70,8 +63,6 @@ instance Exception PlayerMoveInputError
 instance ErrStatus (PlayerMoveInputError) where
     toErrStatus _ = internalServerError500
 
-makeSem ''ReadMapInfo
-makeSem ''UpdateRegion
 makeSem ''CurrentPlayerInfo
 
 newtype KeyNotFoundError k = KeyNotFoundError k deriving (Generic)
@@ -80,23 +71,6 @@ instance ToJSON a => ToJSON (KeyNotFoundError a)
 instance ErrStatus (KeyNotFoundError k) where
     toErrStatus _ = notFound404 
 
-
-
-
-runReadMapInfo :: Members '[State Game, Error PlayerMoveInputError] r => InterpreterFor ReadMapInfo r
-runReadMapInfo = interpret $ \(GetRegionInfo regionId) -> do
-    lookupResult <- gets (Data.Map.lookup regionId . view (turnInfo.gameMap))
-    case lookupResult of
-        Just region -> return region
-        Nothing -> throw $ RegionDontExist regionId
-
-
-runUpdateRegion:: Members '[State Game] r => InterpreterFor UpdateRegion r
-runUpdateRegion = interpret $ \case
-    (UpdatePopulation regionId newPops) ->
-        modify (over (turnInfo.gameMap) (adjust (over population ((+) newPops)) regionId))
-    (ChangeFaction regionId newFac) -> 
-        modify (over (turnInfo.gameMap) (adjust (set faction (Just newFac)) regionId))
 
 runCurrentPlayerInfo :: Members '[State Game, Reader PlayerId] r => InterpreterFor CurrentPlayerInfo r
 runCurrentPlayerInfo = interpret $ \case
@@ -113,8 +87,8 @@ lookupReaderMap key = do
         Just r  -> pure r
         Nothing -> throw (KeyNotFoundError key)
 
-runGameState :: Members '[Embed STM] r => Sem (State Game ': r) a -> Sem (Reader (TVar Game) ': r) a
-runGameState = reinterpret $ \case
+runStateAsReaderTVar :: Members '[Embed STM] r => Sem (State s ': r) a -> Sem (Reader (TVar s) ': r) a
+runStateAsReaderTVar = reinterpret $ \case
     Get     -> asks readTVar >>= embed
     Put s   -> do
         var <- ask
@@ -132,45 +106,23 @@ runGameTurn ::
         Reader GameHub, 
         Input GameId, 
         Error (KeyNotFoundError GameId),
+        Error PlayerMoveInputError,
         Embed STM
     ] r => 
     Sem (
+        ReadMapInfo ': UnitAction ': State UnitPositions ':
         State Game ':
         r
      ) a ->
     Sem r a
-runGameTurn = 
-    runTVarGame . 
-    runGameState
-
-runLogicPure ::
-    Members '[ 
-        State Game,
-        Reader PlayerId,
-        Error PlayerMoveInputError
-    ] r => 
-    Sem (
-        UpdateRegion ':
-        ReadMapInfo ':
-        CurrentPlayerInfo ':
-        r
-     ) a ->
-    Sem r a
-runLogicPure = 
-    runCurrentPlayerInfo .
-    runReadMapInfo . 
-    runUpdateRegion
-
-mapState :: Member (State s) r1 => Member (State t) r2 => (s -> t) -> (t -> s -> s) -> Sem r1 a -> Sem r2 a
-mapState = undefined
+runGameTurn = runTVarGame . runStateAsReaderTVar . runPlayerActions
 
 
-zoom :: Member (State t) r2 => (s -> t) -> (t -> s -> s) -> Sem (State s ': r1) a -> Sem r2 a
-zoom = undefined
+runPlayerActions :: Member (State Game) r => Sem (ReadMapInfo ': UnitAction ': State UnitPositions ': r) a -> Sem r a
+runPlayerActions = zoomEffect unitPositions . runUnitMoving . runReadMapInfo
 
-
-hoistStateT :: Functor m => Lens' game map -> MTL.StateT map m a -> MTL.StateT game m a
-hoistStateT lens state = MTL.StateT (\game -> fmap (\(a, map) -> (a, set lens map game)) (MTL.runStateT state (view lens game)))
-
-hoistState :: Lens' game map -> Sem (State map ': r) a -> MTL.StateT game (Sem r) a
-hoistState lens = hoistStateT lens . hoistStateIntoStateT
+    
+zoomEffect :: Member (State outer) r => Lens' outer inner -> InterpreterFor (State inner) r
+zoomEffect lens stateSem = do
+    innerState <- gets (view lens)
+    Mtl.evalStateT (hoistStateIntoStateT stateSem) innerState 

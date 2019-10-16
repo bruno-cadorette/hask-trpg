@@ -23,21 +23,13 @@ newtype RegionId = RegionId (Int, Int) deriving (Show, Eq, Ord, FromJSON, ToJSON
 newtype Borders = Borders (Map RegionId [RegionId]) deriving (FromJSON, ToJSON)
 newtype Army = Army Int deriving (Show, Eq, Ord, FromJSON, ToJSON, Num)
 
-data Soldier = Soldier {_hp :: Int, _movement :: Int, _speed :: Int, _soldierFaction :: PlayerId} deriving (Show, Generic)
+data Soldier = Soldier {_hp :: Int, _movement :: Int, _speed :: Int, _faction :: PlayerId} deriving (Show, Generic)
 makeLenses ''Soldier
 instance FromJSON Soldier
 instance ToJSON Soldier
 
+baseSoldier = Soldier 5 2 1
 soldier = Soldier 5 2 1 (PlayerId 1)
-
-data RegionInfo = RegionInfo {_faction :: Maybe PlayerId, _population :: Army, _currentSoldier :: Maybe Soldier} deriving(Show, Generic)
-
-instance FromJSON RegionInfo
-instance ToJSON RegionInfo
-
-
-makeLenses ''RegionInfo
-
 
 
 data UnitAction m a where
@@ -47,8 +39,15 @@ data UnitAction m a where
 makeSem ''UnitAction
 
 
+
+data ReadMapInfo m a where
+    --GetRegionInfo :: RegionId -> ReadMapInfo m RegionInfo
+    GetUnit :: RegionId -> ReadMapInfo m (Maybe Soldier)
+
+
+makeSem ''ReadMapInfo
+
 type UnitPositions = Map RegionId Soldier
-type GameMap = Map RegionId RegionInfo
 
 
 hitSoldier :: Int -> Soldier -> Maybe Soldier 
@@ -73,8 +72,13 @@ runUnitMoving = interpret $ \case
         modify (Data.Map.update (hitSoldier damage) location)
 
 
-baseRegions :: Int -> Int -> GameMap
-baseRegions x y = fromList $ fmap (\id -> (id, RegionInfo (getFaction id) 1 Nothing)) $ allRegionRegionId mkRegionId x y
+
+runReadMapInfo :: Members '[State UnitPositions] r => InterpreterFor ReadMapInfo r
+runReadMapInfo = interpret $ \(GetUnit regionId) -> gets (Data.Map.lookup regionId)
+
+
+baseUnitPositions :: UnitPositions
+baseUnitPositions = fromList [(RegionId (2,2), baseSoldier (PlayerId 1)), (RegionId (6,8), baseSoldier (PlayerId 2)) ]
 
 getFaction :: RegionId -> Maybe PlayerId
 getFaction (RegionId (2,2)) = Just $ PlayerId 1

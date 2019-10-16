@@ -53,8 +53,8 @@ type GameApi' =
     Get '[JSON] [GameId] :<|>
     Capture "gameId" GameId :> Throws (KeyNotFoundError GameId) :> (
         "gameState" :> (
-            Get '[JSON] GameMap :<|>
-            ReqBody '[JSON] [Move] :> Throws PlayerMoveInputError :> Post '[JSON] ()
+            Get '[JSON] UnitPositions :<|>
+            ReqBody '[JSON] [PlayerInput] :> Throws PlayerMoveInputError :> Post '[JSON] ()
         ) :<|>
         "borders" :> Get '[JSON] Borders
     )
@@ -65,8 +65,8 @@ type GameApi =
         Get '[JSON] [GameId] :<|>
         Capture "gameId" GameId :> Throws (KeyNotFoundError GameId) :> (
             "gameState" :> (
-                Get '[JSON] GameMap :<|>
-                Capture "playerId" PlayerId :> ReqBody '[JSON] [Move] :> Throws PlayerMoveInputError :> Post '[JSON] ()
+                Get '[JSON] UnitPositions :<|>
+                Capture "playerId" PlayerId :> ReqBody '[JSON] [PlayerInput] :> Throws PlayerMoveInputError :> Post '[JSON] ()
             ) :<|>
             "borders" :> Get '[JSON] Borders
         )

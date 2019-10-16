@@ -80,17 +80,18 @@ getGame gameId = do
 getGameIds :: Risky [GameId]
 getGameIds = asks keys
 
-getGameState :: GameId -> Risky (Envelope '[KeyNotFoundError GameId] GameMap)
-getGameState = runErrorToEnv . fmap (view $ turnInfo.gameMap) . getGame
+getGameState :: GameId -> Risky (Envelope '[KeyNotFoundError GameId] UnitPositions)
+getGameState = runErrorToEnv . fmap (view $ unitPositions) . getGame
 
 
 mapBorders :: GameId -> Risky (Envelope '[KeyNotFoundError GameId] Borders)
 mapBorders = runErrorToEnv . fmap (_gameBorders) . getGame
 
+handleMove = undefined
 
-updateGameMap :: GameId -> PlayerId -> [Move] -> Risky (Envelope '[KeyNotFoundError GameId, PlayerMoveInputError] ())
+updateGameMap :: GameId -> PlayerId -> [PlayerInput] -> Risky (Envelope '[KeyNotFoundError GameId, PlayerMoveInputError] ())
 updateGameMap gameId playerId moves = 
-    runErrors $ runReader playerId $ runInputConst gameId $ runGameTurn $ runLogicPure $ traverse_ handleMove moves
+    runErrors $ runReader playerId $ runInputConst gameId $ runGameTurn $ traverse_ handleMove moves
 
 gameApi gameId = (getGameState gameId :<|> updateGameMap gameId) :<|> mapBorders gameId
 
@@ -109,7 +110,7 @@ serveStaticFiles :: ServerT FileApi Risky
 serveStaticFiles = serveDirectoryWebApp "/home/bruno/git/risky/app/static"
 
 
-initGame = Game (borders 15 15) (TurnInfo (baseRegions 15 15) (fromList [(PlayerId 1, 2), (PlayerId 2, 2)]) 0)
+initGame = Game (borders 15 15) (TurnInfo mempty 0) baseUnitPositions
 
 
 

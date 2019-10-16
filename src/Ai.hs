@@ -10,11 +10,9 @@ import Game.Logic
 
 -- This module, sadly, does not use any cool deep learning framework
 
-generateMoves :: PlayerId -> Map RegionId RegionInfo -> [Move]
+generateMoves :: PlayerId -> Map RegionId Soldier -> [PlayerInput]
 generateMoves player gameMap = 
-    uncurry findMoves $ bimap Map.keys Map.keys $ Map.partition (\x -> Just player == view faction x) $ allOccupied gameMap
+    uncurry findMoves $ bimap Map.keys Map.keys $ Map.partition (\x -> player == x^.faction) $ gameMap
 
-allOccupied =  Map.filter (isJust . view faction)
-
-findMoves :: [RegionId] -> [RegionId] -> [Move]
-findMoves aiMap enemies = fmap (\ai -> Move ai (findClosest ai enemies) (Army 1)) aiMap
+findMoves :: [RegionId] -> [RegionId] -> [PlayerInput]
+findMoves aiMap enemies = fmap (\aiUnit -> PlayerInput Move aiUnit (findClosest aiUnit enemies)) aiMap

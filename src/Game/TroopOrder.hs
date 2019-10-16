@@ -21,8 +21,8 @@ type RemainingPlacements k a = Map.Map k (Placement a)
 class Placed a where
     getScore :: a -> Int
 
-instance Placed Move where
-    getScore = coerce . troops
+instance Placed PlayerInput where
+    getScore = const 1
 
 instance Placed Int where
     getScore = id
