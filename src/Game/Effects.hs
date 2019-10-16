@@ -33,11 +33,7 @@ import Servant.Checked.Exceptions
 import Network.HTTP.Types.Status
 import qualified Control.Monad.State.Lazy as Mtl
 
-data TurnInfo = TurnInfo { _maxReinforcement :: Map PlayerId Int, _turnNumber :: Int }
-
-makeLenses ''TurnInfo
-
-data Game = Game { _gameBorders :: Borders, _turnInfo :: TurnInfo, _unitPositions :: UnitPositions}
+data Game = Game { _gameBorders :: Borders, _turnNumber :: Int, _unitPositions :: UnitPositions}
 
 makeLenses ''Game
 
@@ -47,7 +43,6 @@ newtype GameId = GameId Integer deriving (Num, Eq, Ord, Show, FromHttpApiData, G
 
 data CurrentPlayerInfo m a where
     GetCurrentPlayerId :: CurrentPlayerInfo m PlayerId
-    GetMaxReinforcement :: CurrentPlayerInfo m Int
 
 data PlayerMoveInputError =
     NotPlayerOwned RegionId |
@@ -72,12 +67,9 @@ instance ErrStatus (KeyNotFoundError k) where
     toErrStatus _ = notFound404 
 
 
-runCurrentPlayerInfo :: Members '[State Game, Reader PlayerId] r => InterpreterFor CurrentPlayerInfo r
+runCurrentPlayerInfo :: Members '[Reader PlayerId] r => InterpreterFor CurrentPlayerInfo r
 runCurrentPlayerInfo = interpret $ \case
     GetCurrentPlayerId -> ask @PlayerId
-    GetMaxReinforcement -> do
-        playerId <- ask @PlayerId
-        fromMaybe 0 <$> gets (Data.Map.lookup playerId . view (turnInfo.maxReinforcement))
 
  
 lookupReaderMap :: Ord k => Members '[Reader (Map k a), Error (KeyNotFoundError k)] r => k -> Sem r a
@@ -110,12 +102,15 @@ runGameTurn ::
         Embed STM
     ] r => 
     Sem (
-        ReadMapInfo ': UnitAction ': State UnitPositions ':
+        ReadMapInfo ': 
+        UnitAction ': 
+        State UnitPositions ':
         State Game ':
+        CurrentPlayerInfo ':
         r
      ) a ->
     Sem r a
-runGameTurn = runTVarGame . runStateAsReaderTVar . runPlayerActions
+runGameTurn = runCurrentPlayerInfo . runTVarGame . runStateAsReaderTVar . runPlayerActions
 
 
 runPlayerActions :: Member (State Game) r => Sem (ReadMapInfo ': UnitAction ': State UnitPositions ': r) a -> Sem r a

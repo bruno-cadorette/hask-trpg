@@ -62,3 +62,10 @@ soldierMove origin destination =
     ifM (isRegionOccupied destination) (throw (RegionOccupied destination)) $
     ifM (isSoldierMovingTooMuch origin destination) (throw (MoveTooMuch origin)) $ 
     (moveM origin destination)
+
+
+handlePlayerInput :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => PlayerInput -> Sem r ()
+handlePlayerInput (PlayerInput inputType origin destination) = 
+    case inputType of
+        Move -> soldierMove origin destination
+        _ -> pure ()
