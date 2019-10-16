@@ -15,4 +15,4 @@ generateMoves player gameMap =
     uncurry findMoves $ bimap Map.keys Map.keys $ Map.partition (\x -> player == x^.faction) $ gameMap
 
 findMoves :: [RegionId] -> [RegionId] -> [PlayerInput]
-findMoves aiMap enemies = fmap (\aiUnit -> PlayerInput Move aiUnit (findClosest aiUnit enemies)) aiMap
+findMoves aiMap enemies = fmap (\aiUnit -> PlayerInput Movement aiUnit (findClosest aiUnit enemies)) aiMap

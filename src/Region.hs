@@ -34,7 +34,7 @@ soldier = Soldier 5 2 1 (PlayerId 1)
 
 data UnitAction m a where
     LoseHP :: Int -> RegionId -> UnitAction m () 
-    MoveM :: RegionId -> RegionId -> UnitAction m ()
+    Move :: RegionId -> RegionId -> UnitAction m ()
 
 makeSem ''UnitAction
 
@@ -61,7 +61,7 @@ hitSoldier damage soldier =
 
 runUnitMoving ::Members '[State UnitPositions] r => InterpreterFor UnitAction r
 runUnitMoving = interpret $ \case
-    (MoveM origin destination) -> do
+    (Move origin destination) -> do
         playerToMove <- gets (Data.Map.lookup origin) 
         case playerToMove of
             Just p -> 

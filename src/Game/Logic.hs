@@ -22,7 +22,7 @@ import Game.Effects
 import Data.Foldable
 import Control.Monad
 
-data PlayerInputType = Move | Attack  deriving(Generic, Show)
+data PlayerInputType = Movement | Attack  deriving(Generic, Show)
 data PlayerInput = PlayerInput { _inputType :: PlayerInputType, _origin :: RegionId, _destination :: RegionId } deriving (Generic, Show)
 
 instance FromJSON PlayerInputType
@@ -61,11 +61,11 @@ soldierMove origin destination =
     ifM (not <$> isRegionOwnedByPlayer origin) (throw (NotPlayerOwned origin)) $ 
     ifM (isRegionOccupied destination) (throw (RegionOccupied destination)) $
     ifM (isSoldierMovingTooMuch origin destination) (throw (MoveTooMuch origin)) $ 
-    (moveM origin destination)
+    (move origin destination)
 
 
 handlePlayerInput :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => PlayerInput -> Sem r ()
 handlePlayerInput (PlayerInput inputType origin destination) = 
     case inputType of
-        Move -> soldierMove origin destination
+        Movement -> soldierMove origin destination
         _ -> pure ()
