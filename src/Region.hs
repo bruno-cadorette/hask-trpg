@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE LambdaCase #-}
@@ -10,15 +11,31 @@ module Region where
 
 import PlayerManagement
 import Data.Aeson
+import Data.Aeson.Types
 import Data.Map 
 import GHC.Generics
 import Control.Lens
 import Data.List
+import Data.Text
+import Data.Text.Read
 import Data.Ord
 import Polysemy
 import Polysemy.State
 
-newtype RegionId = RegionId (Int, Int) deriving (Show, Eq, Ord, FromJSON, ToJSON, ToJSONKey, FromJSONKey)
+    
+
+newtype RegionId = RegionId (Int, Int) deriving (Show, Eq, Ord, ToJSONKey, FromJSONKey)
+instance ToJSON RegionId where
+    toJSON (RegionId (x, y)) = String $ pack $ (show x) <> "_" <> (show y)
+instance FromJSON RegionId where
+    parseJSON v = withText "RegionId" actualParsing v
+            
+
+actualParsing id =
+    let (x, y) = breakOn "_" id in
+    case (\x y ->  RegionId (fst x, fst y)) <$> decimal x <*> decimal (Data.Text.tail y) of
+        Right regionId -> pure regionId
+        Left error -> fail error
 
 newtype Borders = Borders (Map RegionId [RegionId]) deriving (FromJSON, ToJSON)
 newtype Army = Army Int deriving (Show, Eq, Ord, FromJSON, ToJSON, Num)

@@ -115,14 +115,17 @@ function drawMap() {
 }
 
 function updateMap() {
-    
-    console.log(countiesInfo)
     let allCounty = document.getElementsByClassName("county")
     for (var i = 0; i < allCounty.length; i++) {
-        var info = countiesInfo[allCounty[i].id]
-        console.log(info)
-        allCounty[i].dataset.faction = info._faction;
-        allCounty[i].innerHTML = info._population;
+        const id = getPositionFromId(allCounty[i].id)
+        console.log(id)
+        var info = countiesInfo[id]
+        if (info){
+            console.log(info)
+            allCounty[i].dataset.faction = info._faction;
+            allCounty[i].innerHTML = info._population;
+
+        }
     }
 }
 
@@ -132,6 +135,7 @@ function init(){
         borders = b.data
         getGameByGameIdGameState(gameId, g => {
             countiesInfo = g.data
+            console.log(countiesInfo)
             drawMap();
             updateMap()
         })
