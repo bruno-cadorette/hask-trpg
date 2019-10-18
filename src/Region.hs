@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE LambdaCase, BlockArguments, TypeApplications, TypeFamilies #-}
@@ -21,17 +20,23 @@ import Data.Text.Read
 import Data.Ord
 import Polysemy
 import Polysemy.State
+import Data.String.Conversions
+import Soldier
 
-    
+newtype RegionId = RegionId (Int, Int) deriving (Show, Eq, Ord, FromJSONKey)
 
-newtype RegionId = RegionId (Int, Int) deriving (Show, Eq, Ord, ToJSONKey, FromJSONKey)
 instance ToJSON RegionId where
-    toJSON (RegionId (x, y)) = String $ pack $ (show x) <> "_" <> (show y)
+    toJSON = String . encodeRegionId
 instance FromJSON RegionId where
-    parseJSON v = withText "RegionId" actualParsing v
+    parseJSON v = withText "RegionId" parseRegionId v
             
+instance ToJSONKey RegionId where
+    toJSONKey = toJSONKeyText encodeRegionId
 
-actualParsing id =
+
+encodeRegionId (RegionId (x, y)) = pack $ (show x) <> "_" <> (show y)
+
+parseRegionId id =
     let (x, y) = breakOn "_" id in
     case (\x y ->  RegionId (fst x, fst y)) <$> decimal x <*> decimal (Data.Text.tail y) of
         Right regionId -> pure regionId
@@ -40,13 +45,6 @@ actualParsing id =
 newtype Borders = Borders (Map RegionId [RegionId]) deriving (FromJSON, ToJSON)
 newtype Army = Army Int deriving (Show, Eq, Ord, FromJSON, ToJSON, Num)
 
-data Soldier = Soldier {_hp :: Int, _movement :: Int, _speed :: Int, _faction :: PlayerId} deriving (Show, Generic)
-makeLenses ''Soldier
-instance FromJSON Soldier
-instance ToJSON Soldier
-
-baseSoldier = Soldier 5 2 1
-soldier = Soldier 5 2 1 (PlayerId 1)
 
 
 data UnitAction m a where
@@ -67,13 +65,6 @@ makeSem ''ReadMapInfo
 type UnitPositions = Map RegionId Soldier
 
 
-hitSoldier :: Int -> Soldier -> Maybe Soldier 
-hitSoldier damage soldier = 
-    let newHp = soldier^.hp - damage in
-    if newHp >= 0 then
-        Just (set hp newHp soldier)
-    else
-        Nothing
 
 
 runUnitMoving ::Members '[State UnitPositions] r => InterpreterFor UnitAction r

@@ -49,20 +49,13 @@ import Servant.Checked.Exceptions
 import Data.Either
 import Control.Monad
 import Servant.Auth.Server
-
+import ServerHandler
 
 instance ToJWT PlayerId
 instance FromJWT PlayerId
 
 
-type Risky = Sem '[Reader GameHub, Embed STM]
-
-
-eitherAddError :: IsMember e es => Either e a -> Envelope es a
-eitherAddError = either toErrEnvelope toSuccEnvelope
-
-runErrorToEnv :: IsMember e es => Sem (Error e ': r) a -> Sem r (Envelope es a) 
-runErrorToEnv = fmap eitherAddError . runError
+type GameMonad = Sem '[Reader GameHub, Embed STM]
 
 runErrors :: 
     IsMember (KeyNotFoundError (GameId)) es => 
@@ -77,24 +70,24 @@ getGame gameId = do
     game <- lookupReaderMap gameId
     embed $ readTVar game
 
-getGameIds :: Risky [GameId]
+getGameIds :: GameMonad [GameId]
 getGameIds = asks keys
 
-getGameState :: GameId -> Risky (Envelope '[KeyNotFoundError GameId] UnitPositions)
+getGameState :: GameId -> GameMonad (Envelope '[KeyNotFoundError GameId] UnitPositions)
 getGameState = runErrorToEnv . fmap (view $ unitPositions) . getGame
 
 
-mapBorders :: GameId -> Risky (Envelope '[KeyNotFoundError GameId] Borders)
+mapBorders :: GameId -> GameMonad (Envelope '[KeyNotFoundError GameId] Borders)
 mapBorders = runErrorToEnv . fmap (_gameBorders) . getGame
 
-updateGameMap :: GameId -> PlayerId -> [PlayerInput] -> Risky (Envelope '[KeyNotFoundError GameId, PlayerMoveInputError] ())
+updateGameMap :: GameId -> PlayerId -> [PlayerInput] -> GameMonad (Envelope '[KeyNotFoundError GameId, PlayerMoveInputError] ())
 updateGameMap gameId playerId moves = 
     runErrors $ runReader playerId $ runInputConst gameId $ runGameTurn $ traverse_ handlePlayerInput moves
 
 gameApi gameId = (getGameState gameId :<|> updateGameMap gameId) :<|> mapBorders gameId
 
 
-riskyApi :: ServerT FullApi Risky
+riskyApi :: ServerT FullApi GameMonad
 riskyApi = (pure game) :<|> serveStaticFiles :<|> getGameIds :<|> gameApi  
 
 riskyServer region = hoistServer (Proxy :: Proxy FullApi) (riskyTToHandler region) riskyApi
@@ -104,7 +97,7 @@ writeJSFiles = writeJSForAPI (Proxy :: Proxy GameApi) vanillaJS "/home/bruno/git
 
 
 
-serveStaticFiles :: ServerT FileApi Risky
+serveStaticFiles :: ServerT FileApi GameMonad
 serveStaticFiles = serveDirectoryWebApp "/home/bruno/git/risky/app/static"
 
 
@@ -113,7 +106,7 @@ initGame = Game (borders 15 15) 0 baseUnitPositions
 
 
 
-riskyTToHandler :: GameHub -> Risky a -> Handler a
+riskyTToHandler :: GameHub -> GameMonad a -> Handler a
 riskyTToHandler hub r = liftIO $ atomically $ runM $ runReader hub r
 
 

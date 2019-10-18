@@ -7,6 +7,7 @@ import Data.Maybe
 import Data.Bifunctor
 import PlayerManagement
 import Game.Logic
+import Soldier
 
 -- This module, sadly, does not use any cool deep learning framework
 

@@ -21,6 +21,7 @@ import Polysemy.Error
 import Game.Effects
 import Data.Foldable
 import Control.Monad
+import Soldier
 
 data PlayerInputType = Movement | Attack  deriving(Generic, Show)
 data PlayerInput = PlayerInput { _inputType :: PlayerInputType, _origin :: RegionId, _destination :: RegionId } deriving (Generic, Show)
