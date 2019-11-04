@@ -1,6 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE LambdaCase, BlockArguments, ScopedTypeVariables #-}
+{-# LANGUAGE BlockArguments, ScopedTypeVariables #-}
 {-# LANGUAGE GADTs, FlexibleContexts, TypeOperators, DataKinds, PolyKinds #-}
 {-# OPTIONS_GHC -fplugin=Polysemy.Plugin #-}
 
@@ -40,7 +39,7 @@ isRegionOwnedByPlayer regionId = do
     return $ Just playerId == fac
 
 isRegionOccupied :: Member ReadMapInfo r => RegionId -> Sem r Bool
-isRegionOccupied regionId = (isNothing . preview (_Just . faction)) <$> getUnit regionId
+isRegionOccupied = fmap (isNothing . preview (_Just . faction)) . getUnit
 
 isSoldierMovingTooMuch :: Member ReadMapInfo r => RegionId -> RegionId -> Sem r Bool
 isSoldierMovingTooMuch regionId1 regionId2 = do
@@ -62,7 +61,7 @@ soldierMove origin destination =
     ifM (not <$> isRegionOwnedByPlayer origin) (throw (NotPlayerOwned origin)) $ 
     ifM (isRegionOccupied destination) (throw (RegionOccupied destination)) $
     ifM (isSoldierMovingTooMuch origin destination) (throw (MoveTooMuch origin)) $ 
-    (move origin destination)
+    move origin destination
 
 
 handlePlayerInput :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => PlayerInput -> Sem r ()

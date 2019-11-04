@@ -1,15 +1,12 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE LambdaCase, BlockArguments, TypeApplications, TypeFamilies #-}
 {-# LANGUAGE GADTs, FlexibleContexts, TypeOperators, DataKinds, PolyKinds, RankNTypes, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fplugin=Polysemy.Plugin #-}
 
 module Game.Effects where
 
-import Polysemy.State
 import Servant
 import Data.List
 import Data.Maybe
@@ -55,7 +52,7 @@ data PlayerMoveInputError =
 instance FromJSON PlayerMoveInputError
 instance ToJSON PlayerMoveInputError
 instance Exception PlayerMoveInputError
-instance ErrStatus (PlayerMoveInputError) where
+instance ErrStatus PlayerMoveInputError where
     toErrStatus _ = internalServerError500
 
 makeSem ''CurrentPlayerInfo

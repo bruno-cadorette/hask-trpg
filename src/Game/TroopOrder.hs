@@ -12,7 +12,7 @@ import Data.List
 import Region
 
 
-data Placement a = Placement { placed :: Int, remainings :: (NonEmpty a)}
+data Placement a = Placement { placed :: Int, remainings :: NonEmpty a}
 extractTop = NonEmpty.head . remainings
 createPlacement = fmap (Placement 0) . nonEmpty
 
@@ -33,9 +33,9 @@ nextPlacement = fmap (second extractTop . maximumBy (comparing (getScore . extra
 
 updatePlacements :: Placed a => a -> Placement a -> Maybe (Placement a)
 updatePlacements v (Placement p r) = 
-    fmap (Placement ((getScore v) + p)) $ nonEmpty $ NonEmpty.tail r
+    fmap (Placement (getScore v + p)) $ nonEmpty $ NonEmpty.tail r
 
 place :: (Ord k, Placed a) => RemainingPlacements k a -> [(k, a)]
 place = Data.List.unfoldr algorithm
     where 
-        algorithm xs = fmap (\(k,v) -> ((k,v), Map.update (updatePlacements v) k xs)) $ nextPlacement xs
+        algorithm xs = fmap (\(k,v) -> ((k,v), Map.update (updatePlacements v) k xs)) (nextPlacement xs)

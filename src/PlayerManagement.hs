@@ -23,7 +23,7 @@ writeCache (PlayerCache cache) pid x =
     writeArray cache pid (Just x)
 
 cacheIsFull :: PlayerCache a -> STM Bool
-cacheIsFull (PlayerCache cache) = fmap (all isJust) $ getElems cache
+cacheIsFull (PlayerCache cache) = fmap (all isJust) (getElems cache)
 
 emptyCache :: PlayerCache a -> STM ()
 emptyCache (PlayerCache cache) = do
@@ -31,7 +31,7 @@ emptyCache (PlayerCache cache) = do
     traverse_ (\i -> writeArray cache i Nothing) $ range bounds
 
 getCompletedCache :: PlayerCache a -> STM [(PlayerId, a)]
-getCompletedCache (PlayerCache cache) = fmap (mapMaybe sequenceA) $ getAssocs cache
+getCompletedCache (PlayerCache cache) = fmap (mapMaybe sequenceA) (getAssocs cache)
 
 
 addToCache :: PlayerCache a -> PlayerId -> a -> STM (Maybe [(PlayerId, a)])

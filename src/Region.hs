@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE LambdaCase, BlockArguments, TypeApplications, TypeFamilies #-}
 {-# LANGUAGE GADTs, FlexibleContexts, TypeOperators, DataKinds, PolyKinds, RankNTypes, ScopedTypeVariables #-}
@@ -28,13 +27,13 @@ newtype RegionId = RegionId (Int, Int) deriving (Show, Eq, Ord, FromJSONKey)
 instance ToJSON RegionId where
     toJSON = String . encodeRegionId
 instance FromJSON RegionId where
-    parseJSON v = withText "RegionId" parseRegionId v
+    parseJSON = withText "RegionId" parseRegionId
             
 instance ToJSONKey RegionId where
     toJSONKey = toJSONKeyText encodeRegionId
 
 
-encodeRegionId (RegionId (x, y)) = pack $ (show x) <> "_" <> (show y)
+encodeRegionId (RegionId (x, y)) = pack $ show x <> "_" <> show y
 
 parseRegionId id =
     let (x, y) = breakOn "_" id in
@@ -99,14 +98,13 @@ allRegionRegionId f x y = do
 
 
 mkRegionId :: Int -> Int -> RegionId
-mkRegionId x y = RegionId $ (x,y)
+mkRegionId x y = RegionId (x,y)
 
 neighboor maxX maxY (x, y) = (mkRegionId x y , allNeighboor)
     where
         allNeighboor = do
             x' <- [(max 0 $ x-1)..(min maxX $ x+1)]
-            y' <- [(max 0 $ y-1)..(min maxY $ y+1)]
-            return $ mkRegionId x' y'
+            fmap (mkRegionId x') [(max 0 $ y-1)..(min maxY $ y+1)]
  
 
 distance :: RegionId -> RegionId -> Int
@@ -114,7 +112,7 @@ distance (RegionId (x1, y1)) (RegionId (x2,y2)) = abs (x2 - x1) + abs (y2 - y1)
 
 
 borders :: Int -> Int -> Borders
-borders x y = Borders $ fromList $ fmap (neighboor x y) $ allRegionRegionId (,) x y
+borders x y = Borders $ fromList $ neighboor x y <$> allRegionRegionId (,) x y
 
 findClosest :: RegionId -> [RegionId] -> RegionId
 findClosest origin = minimumBy (comparing (distance origin))
