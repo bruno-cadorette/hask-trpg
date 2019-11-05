@@ -39,12 +39,12 @@ isRegionOwnedByPlayer regionId = do
     return $ Just playerId == fac
 
 isRegionOccupied :: Member ReadMapInfo r => RegionId -> Sem r Bool
-isRegionOccupied = fmap (isNothing . preview (_Just . faction)) . getUnit
+isRegionOccupied = fmap (isJust . preview (_Just . faction)) . getUnit
 
 isSoldierMovingTooMuch :: Member ReadMapInfo r => RegionId -> RegionId -> Sem r Bool
 isSoldierMovingTooMuch regionId1 regionId2 = do
     maxDistance <- preview (_Just.movement) <$> getUnit regionId1
-    return $ Just (distance regionId1 regionId2) <= maxDistance
+    return $ Just (distance regionId1 regionId2) > maxDistance
 
 
 areFromSameFactions :: Members '[ReadMapInfo] r => RegionId -> RegionId -> Sem r Bool

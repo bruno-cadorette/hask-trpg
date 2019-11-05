@@ -19,7 +19,6 @@ import Data.Text.Read
 import Data.Ord
 import Polysemy
 import Polysemy.State
-import Data.String.Conversions
 import Soldier
 
 newtype RegionId = RegionId (Int, Int) deriving (Show, Eq, Ord, FromJSONKey)

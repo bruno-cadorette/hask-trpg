@@ -20,6 +20,7 @@ import Data.Either
 import Control.Applicative
 import Test.QuickCheck
 import Test.Hspec
+import Soldier
 import Control.Lens
 {-
 moveWithMock :: GameMap -> PlayerId -> Move -> Either PlayerMoveInputError GameMap
@@ -31,15 +32,16 @@ runLogicTest initialState playerId =
     run . runError @PlayerMoveInputError . runReader @PlayerId playerId . fmap fst . runState initialState . runLogicPure
 -}
 
+mock unitPositions playerId = evalState unitPositions . runReader playerId . runUnitMoving . runCurrentPlayerInfo . runReadMapInfo
+runMock unitPositions playerId = run . mock unitPositions playerId
+runMockError unitPositions playerId = run . runError @PlayerMoveInputError . mock unitPositions playerId
 
-runMock unitPositions playerId = run . evalState unitPositions . runReader playerId . runCurrentPlayerInfo . runReadMapInfo
 
 main :: IO ()
 main = do
     let playerId = PlayerId 1
     let otherPlayerId = PlayerId 2
     let homeRegion = RegionId (0,0)
-    let x = fromList [(homeRegion, baseSoldier playerId)]
 
     hspec $ do
         describe "Region tests" $ do      
@@ -56,54 +58,13 @@ main = do
                 (runMock gameMap playerId $ isRegionOwnedByPlayer homeRegion) `shouldBe` False
 
             it "Given region is owned by player, when cheking if region is occupied, then region is occupied" $ do
-                let gameMap = fromList [(homeRegion, baseSoldier otherPlayerId)]
+                let gameMap = fromList [(homeRegion, baseSoldier playerId)]
                 (runMock gameMap playerId $ isRegionOwnedByPlayer homeRegion) `shouldBe` (runMock gameMap playerId $ isRegionOccupied homeRegion)
-            {-
-        it "Given owned area, when player move army, army doesnt lose" $ do
-            let gameMap = fromList [
-                    (homeRegion, RegionInfo (Just playerId) playerArmy),
-                    (awayRegion, RegionInfo (Just playerId) (Army 2))
-                    ]
-            let expectedResult = fromList [
-                    (homeRegion, RegionInfo (Just playerId) (Army 0)),
-                    (awayRegion, RegionInfo (Just playerId) (Army 10))
-                    ]
-                
-            moveWithMock gameMap playerId (Move homeRegion awayRegion playerArmy) `shouldBe` (Right expectedResult) 
 
-        it "Given neutral occupied area, when player attacks with bigger army, then player conquer" $ do
-            let gameMap = fromList [
-                    (homeRegion, RegionInfo (Just playerId) playerArmy),
-                    (awayRegion, RegionInfo Nothing (Army 2))
-                    ]
-            let expectedResult = fromList [
-                    (homeRegion, RegionInfo (Just playerId) (Army 0)),
-                    (awayRegion, RegionInfo (Just playerId) (Army 6))
-                    ]
-                
-            moveWithMock gameMap playerId (Move homeRegion awayRegion playerArmy) `shouldBe` (Right expectedResult) 
+            it "Soldier can move to an unoccupied region" $ do
+                let gameMap = fromList [(homeRegion, baseSoldier playerId)]
+                (runMockError gameMap playerId $ soldierMove homeRegion (RegionId (0, 1))) `shouldBe` Right ()
 
-        it "Given enemy's area is populous, when player attacks with smaller army, then enemy area lose some units" $ do
-            let gameMap = fromList [
-                    (homeRegion, RegionInfo (Just playerId) playerArmy),
-                    (awayRegion, RegionInfo Nothing (Army 10))
-                    ]
-            let expectedResult = fromList [
-                    (homeRegion, RegionInfo (Just playerId) (Army 0)),
-                    (awayRegion, RegionInfo Nothing (Army 2))
-                    ]
-                
-            moveWithMock gameMap playerId (Move homeRegion awayRegion playerArmy) `shouldBe` (Right expectedResult) 
-
-        it "Given neutral area, when player try to move from it, then exception happend" $ do
-            let gameMap = fromList [
-                    (homeRegion, RegionInfo Nothing playerArmy),
-                    (awayRegion, RegionInfo Nothing (Army 10))
-                    ]
-
-            moveWithMock gameMap playerId (Move homeRegion awayRegion playerArmy) `shouldBe` (Left (NotPlayerOwned homeRegion))
-
-        it "Given empty map, when player try to move, then exception happend" $ do
-            let gameMap = fromList []
-            moveWithMock gameMap playerId (Move homeRegion awayRegion playerArmy) `shouldBe` (Left (RegionDontExist homeRegion))
--}
+            it "Soldier can't move farther than their limits" $ do
+                let gameMap = fromList [(homeRegion, baseSoldier playerId)]
+                (runMockError gameMap playerId $ soldierMove homeRegion (RegionId (2, 1))) `shouldBe` Left (MoveTooMuch homeRegion)
