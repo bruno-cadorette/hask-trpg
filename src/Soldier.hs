@@ -11,17 +11,20 @@ import Control.Lens
 import GHC.Generics
 import Data.Aeson
 
-data Soldier = Soldier {_hp :: Int, _movement :: Int, _speed :: Int, _faction :: PlayerId} deriving (Show, Generic)
-makeLenses ''Soldier
-instance FromJSON Soldier
-instance ToJSON Soldier
+data SoldierUnit = SoldierUnit {_hp :: Int, _movement :: Int, _attack :: Int, _range :: Int, _faction :: PlayerId} deriving (Show, Generic)
+makeLenses ''SoldierUnit
+instance FromJSON SoldierUnit
+instance ToJSON SoldierUnit
 
-baseSoldier = Soldier 5 2 1
-soldier = Soldier 5 2 1 (PlayerId 1)
+baseSoldier = SoldierUnit 5 2 1 1
 
+class Soldier a where
+    soldier :: a -> SoldierUnit
 
+instance Soldier SoldierUnit where
+    soldier = id
 
-hitSoldier :: Int -> Soldier -> Maybe Soldier 
+hitSoldier :: Int -> SoldierUnit -> Maybe SoldierUnit 
 hitSoldier damage soldier = 
     let newHp = soldier^.hp - damage in
     if newHp >= 0 then

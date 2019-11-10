@@ -11,7 +11,7 @@ import Soldier
 
 -- This module, sadly, does not use any cool deep learning framework
 
-generateMoves :: PlayerId -> Map RegionId Soldier -> [PlayerInput]
+generateMoves :: PlayerId -> Map RegionId SoldierUnit -> [PlayerInput]
 generateMoves player gameMap = 
     uncurry findMoves $ bimap Map.keys Map.keys $ Map.partition (\x -> player == x^.faction) gameMap
 

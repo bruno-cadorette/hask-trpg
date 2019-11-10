@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE BlockArguments, ScopedTypeVariables #-}
-{-# LANGUAGE GADTs, FlexibleContexts, TypeOperators, DataKinds, PolyKinds #-}
+{-# LANGUAGE GADTs, FlexibleContexts, TypeOperators, DataKinds, PolyKinds, MultiWayIf #-}
 {-# OPTIONS_GHC -fplugin=Polysemy.Plugin #-}
 
 module Game.Logic where
@@ -20,6 +20,7 @@ import Polysemy.Error
 import Game.Effects
 import Data.Foldable
 import Control.Monad
+import Data.Coerce
 import Soldier
 
 data PlayerInputType = Movement | Attack  deriving(Generic, Show)
@@ -30,42 +31,80 @@ instance ToJSON PlayerInputType
 
 instance FromJSON PlayerInput
 instance ToJSON PlayerInput
+ 
+getPlayerUnit :: Members '[ReadMapInfo, CurrentPlayerInfo] r => RegionId -> Sem r (Maybe TargetSoldier)
+getPlayerUnit regionId = do
+    cond <- isRegionOwnedByPlayer regionId
+    if cond then 
+        getTargetSoldier regionId
+    else
+        pure Nothing
 
+getEmptyRegion :: Member ReadMapInfo r => RegionId -> Sem r (Maybe EmptyRegion)
+getEmptyRegion regionId = do
+    unit <- getUnit regionId
+    pure $ if isJust unit then
+        Nothing
+    else 
+        Just $ EmptyRegion regionId
+
+getFaction :: Member ReadMapInfo r => RegionId -> Sem r (Maybe PlayerId)
+getFaction = fmap (preview  (_Just . faction)) . getUnit
 
 isRegionOwnedByPlayer :: Members '[CurrentPlayerInfo, ReadMapInfo] r => RegionId -> Sem r Bool
 isRegionOwnedByPlayer regionId = do
     playerId <- getCurrentPlayerId
-    fac <-  preview (_Just . faction)  <$> getUnit regionId
+    fac <-  getFaction regionId
     return $ Just playerId == fac
 
 isRegionOccupied :: Member ReadMapInfo r => RegionId -> Sem r Bool
-isRegionOccupied = fmap (isJust . preview (_Just . faction)) . getUnit
+isRegionOccupied = fmap isJust . getFaction
 
-isSoldierMovingTooMuch :: Member ReadMapInfo r => RegionId -> RegionId -> Sem r Bool
-isSoldierMovingTooMuch regionId1 regionId2 = do
-    maxDistance <- preview (_Just.movement) <$> getUnit regionId1
-    return $ Just (distance regionId1 regionId2) > maxDistance
+isSoldierMovingTooMuch :: (Region a, Region b, Soldier a) => a -> b -> Bool
+isSoldierMovingTooMuch a b = 
+    distance (regionId a) (regionId b) > (soldier a)^.movement
 
+
+isSoldierInRange :: (Soldier a, Region a, Region b) => a -> b -> Bool
+isSoldierInRange a b = 
+    distance (regionId a) (regionId b) <= (soldier a)^.range
+
+areAllies :: (Soldier a, Soldier b) => a -> b -> Bool
+areAllies s1 s2 = (soldier s1)^.faction == (soldier s2)^.faction 
 
 areFromSameFactions :: Members '[ReadMapInfo] r => RegionId -> RegionId -> Sem r Bool
 areFromSameFactions regionId1 regionId2 = do
-    fac1 <- preview (_Just . faction) <$> getUnit regionId1
-    fac2 <- preview (_Just . faction) <$> getUnit regionId2
+    fac1 <- getFaction regionId1
+    fac2 <- getFaction regionId2
     return $ fac1 == fac2
     
-ifM :: Monad m => m Bool -> m a -> m a -> m a
-ifM cond t f = cond >>= (\c -> if c then t else f)
 
 soldierMove :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => RegionId -> RegionId -> Sem r ()
-soldierMove origin destination = 
-    ifM (not <$> isRegionOwnedByPlayer origin) (throw (NotPlayerOwned origin)) $ 
-    ifM (isRegionOccupied destination) (throw (RegionOccupied destination)) $
-    ifM (isSoldierMovingTooMuch origin destination) (throw (MoveTooMuch origin)) $ 
-    move origin destination
+soldierMove origin destination = do 
+    playerSoldier <- getPlayerUnit origin
+    emptyRegion <- getEmptyRegion destination
+    case (playerSoldier, emptyRegion) of
+        (Nothing, _) -> throw (NotPlayerOwned origin)
+        (_, Nothing) -> throw (RegionOccupied destination)
+        (Just soldier, Just emptyRegion) -> if
+            | isSoldierMovingTooMuch soldier emptyRegion -> throw (MoveTooMuch origin)
+            | otherwise -> move soldier emptyRegion
+
+soldierAttack :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => RegionId -> RegionId -> Sem r ()
+soldierAttack origin destination = do
+    attacker <- getPlayerUnit origin
+    defender <- getTargetSoldier destination
+    case (attacker, defender) of
+        (Nothing, _) -> throw (NotPlayerOwned origin)
+        (_, Nothing) -> throw (RegionNotOccupied destination)
+        (Just attacker, Just defender) -> if
+            | areAllies attacker defender -> throw (AttackAllies origin destination)
+            | not $ isSoldierInRange attacker defender -> throw (AttackTooFar origin destination)
+            | otherwise -> loseHP ((soldier attacker)^.attack) defender
 
 
 handlePlayerInput :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => PlayerInput -> Sem r ()
 handlePlayerInput (PlayerInput inputType origin destination) = 
     case inputType of
         Movement -> soldierMove origin destination
-        _ -> pure ()
+        Attack -> soldierAttack origin destination

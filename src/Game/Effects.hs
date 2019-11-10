@@ -44,9 +44,10 @@ data CurrentPlayerInfo m a where
 data PlayerMoveInputError =
     NotPlayerOwned RegionId |
     RegionOccupied RegionId |
-    RegionDontExist RegionId |
-    MoveTooMuch RegionId | 
-    TooMuchReinforcement 
+    RegionNotOccupied RegionId |
+    AttackAllies RegionId RegionId | 
+    AttackTooFar RegionId RegionId |
+    MoveTooMuch RegionId 
     deriving (Show, Generic, Eq)
 
 instance FromJSON PlayerMoveInputError

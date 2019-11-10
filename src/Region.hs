@@ -42,41 +42,50 @@ parseRegionId id =
 
 newtype Borders = Borders (Map RegionId [RegionId]) deriving (FromJSON, ToJSON)
 newtype Army = Army Int deriving (Show, Eq, Ord, FromJSON, ToJSON, Num)
+class Region a where
+    regionId :: a -> RegionId
 
+instance Region RegionId where
+    regionId = id
 
+instance Region EmptyRegion where
+    regionId (EmptyRegion regionId) = regionId
+
+instance Region TargetSoldier where
+    regionId (TargetSoldier regionId _) = regionId
+    
+
+instance Soldier TargetSoldier where
+    soldier (TargetSoldier _ soldier) = soldier
+
+newtype EmptyRegion = EmptyRegion RegionId deriving(Show)
+data TargetSoldier = TargetSoldier RegionId SoldierUnit deriving (Show)
+
+makeLenses ''TargetSoldier 
 
 data UnitAction m a where
-    LoseHP :: Int -> RegionId -> UnitAction m () 
-    Move :: RegionId -> RegionId -> UnitAction m ()
+    LoseHP :: Int -> TargetSoldier -> UnitAction m () 
+    Move :: TargetSoldier -> EmptyRegion -> UnitAction m ()
 
 makeSem ''UnitAction
 
-
-
 data ReadMapInfo m a where
-    --GetRegionInfo :: RegionId -> ReadMapInfo m RegionInfo
-    GetUnit :: RegionId -> ReadMapInfo m (Maybe Soldier)
-
+    GetUnit :: RegionId -> ReadMapInfo m (Maybe SoldierUnit)
 
 makeSem ''ReadMapInfo
 
-type UnitPositions = Map RegionId Soldier
+getTargetSoldier :: Member ReadMapInfo r => RegionId -> Sem r (Maybe TargetSoldier)
+getTargetSoldier regionId = 
+    fmap (fmap (TargetSoldier regionId)) $ getUnit regionId
 
-
-
+type UnitPositions = Map RegionId SoldierUnit
 
 runUnitMoving ::Members '[State UnitPositions] r => InterpreterFor UnitAction r
 runUnitMoving = interpret $ \case
-    (Move origin destination) -> do
-        playerToMove <- gets (Data.Map.lookup origin) 
-        case playerToMove of
-            Just p -> 
-                modify (Data.Map.insert destination p)
-            Nothing ->
-                pure () -- Maybe use Data.Map.Justified instead of map for this???
-    (LoseHP damage location) ->
+    Move (TargetSoldier _ playerToMove) (EmptyRegion destination) -> 
+        modify (Data.Map.insert destination playerToMove)
+    LoseHP damage (TargetSoldier location _) -> 
         modify (Data.Map.update (hitSoldier damage) location)
-
 
 
 runReadMapInfo :: Members '[State UnitPositions] r => InterpreterFor ReadMapInfo r
@@ -85,11 +94,6 @@ runReadMapInfo = interpret $ \(GetUnit regionId) -> gets (Data.Map.lookup region
 
 baseUnitPositions :: UnitPositions
 baseUnitPositions = fromList [(RegionId (2,2), baseSoldier (PlayerId 1)), (RegionId (6,8), baseSoldier (PlayerId 2)) ]
-
-getFaction :: RegionId -> Maybe PlayerId
-getFaction (RegionId (2,2)) = Just $ PlayerId 1
-getFaction (RegionId (6,8)) = Just $ PlayerId 2
-getFaction _     = Nothing
 
 allRegionRegionId f x y = do
     x' <- [0..x]

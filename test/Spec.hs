@@ -22,20 +22,19 @@ import Test.QuickCheck
 import Test.Hspec
 import Soldier
 import Control.Lens
-{-
-moveWithMock :: GameMap -> PlayerId -> Move -> Either PlayerMoveInputError GameMap
-moveWithMock testedMap playerId = 
-        fmap (view (turnInfo.gameMap)) . runLogicTest (Game (borders 15 15) (TurnInfo testedMap mempty 0)) playerId . handleMove
 
-runLogicTest :: Game -> PlayerId -> Sem '[UpdateRegion, ReadMapInfo, CurrentPlayerInfo, State Game, Reader PlayerId, Error PlayerMoveInputError] a -> Either PlayerMoveInputError Game
-runLogicTest initialState playerId = 
-    run . runError @PlayerMoveInputError . runReader @PlayerId playerId . fmap fst . runState initialState . runLogicPure
--}
+mock fctState unitPositions playerId = 
+    run
+    . runError @PlayerMoveInputError 
+    . fctState unitPositions 
+    . runReader playerId 
+    . runUnitMoving 
+    . runCurrentPlayerInfo  
+    . runReadMapInfo
 
-mock unitPositions playerId = evalState unitPositions . runReader playerId . runUnitMoving . runCurrentPlayerInfo . runReadMapInfo
-runMock unitPositions playerId = run . mock unitPositions playerId
-runMockError unitPositions playerId = run . runError @PlayerMoveInputError . mock unitPositions playerId
+testFunctionResult = mock evalState
 
+testState unitPositions playerId = fmap fst . mock runState unitPositions playerId
 
 main :: IO ()
 main = do
@@ -44,27 +43,52 @@ main = do
     let homeRegion = RegionId (0,0)
 
     hspec $ do
-        describe "Region tests" $ do      
+        describe "Region ownership" $ do      
             it "Given region owned by player, when player selects it, then region is owned by player" $ do
                 let gameMap = fromList [(homeRegion, baseSoldier playerId)]
-                (runMock gameMap playerId $ isRegionOwnedByPlayer homeRegion) `shouldBe` True
+                (testFunctionResult gameMap playerId $ isRegionOwnedByPlayer homeRegion) `shouldBe` Right True
 
             it "Given region not owned by player, when player selects it, then region is not owned by player" $ do
                 let gameMap = fromList [(homeRegion, baseSoldier otherPlayerId)]
-                (runMock gameMap playerId $ isRegionOwnedByPlayer homeRegion) `shouldBe` False
+                (testFunctionResult gameMap playerId $ isRegionOwnedByPlayer homeRegion) `shouldBe` Right False
 
             it "Given region dont exist, when player selects it, then region is not owned by player" $ do
                 let gameMap = fromList []
-                (runMock gameMap playerId $ isRegionOwnedByPlayer homeRegion) `shouldBe` False
+                (testFunctionResult gameMap playerId $ isRegionOwnedByPlayer homeRegion) `shouldBe` Right False
 
             it "Given region is owned by player, when cheking if region is occupied, then region is occupied" $ do
                 let gameMap = fromList [(homeRegion, baseSoldier playerId)]
-                (runMock gameMap playerId $ isRegionOwnedByPlayer homeRegion) `shouldBe` (runMock gameMap playerId $ isRegionOccupied homeRegion)
+                (testFunctionResult gameMap playerId $ isRegionOwnedByPlayer homeRegion) `shouldBe` (testFunctionResult gameMap playerId $ isRegionOccupied homeRegion)
 
+        describe "Soldier moving" $ do
             it "Soldier can move to an unoccupied region" $ do
                 let gameMap = fromList [(homeRegion, baseSoldier playerId)]
-                (runMockError gameMap playerId $ soldierMove homeRegion (RegionId (0, 1))) `shouldBe` Right ()
+                (testFunctionResult gameMap playerId $ soldierMove homeRegion (RegionId (0, 1))) `shouldBe` Right ()
 
             it "Soldier can't move farther than their limits" $ do
                 let gameMap = fromList [(homeRegion, baseSoldier playerId)]
-                (runMockError gameMap playerId $ soldierMove homeRegion (RegionId (2, 1))) `shouldBe` Left (MoveTooMuch homeRegion)
+                (testFunctionResult gameMap playerId $ soldierMove homeRegion (RegionId (2, 1))) `shouldBe` Left (MoveTooMuch homeRegion)
+
+        describe "Soldier hitting" $ do
+
+            it "Soldier can't hit empty region" $ do
+                let enemyRegion = RegionId (2, 1)
+                let gameMap = fromList [(homeRegion, baseSoldier playerId)]
+                (testFunctionResult gameMap playerId $ soldierAttack homeRegion enemyRegion) `shouldBe` Left (RegionNotOccupied enemyRegion)
+            
+            it "Soldier who gets hit lose the amount of hp of the attacker attack stat" $ do
+                let enemyRegion = RegionId (0, 1)
+                let attackerAttack = 3
+                let defenderHp = 5
+                let gameMap = fromList [(homeRegion, (baseSoldier playerId)&attack.~attackerAttack), (enemyRegion, (baseSoldier otherPlayerId)&hp.~defenderHp)]
+                let newMap = testState gameMap playerId $ soldierAttack homeRegion enemyRegion
+                fmap (preview $ at enemyRegion._Just.hp) newMap `shouldBe` Right (Just (defenderHp - attackerAttack))
+
+            it "Soldier who gets hit too hard die" $ do
+                let enemyRegion = RegionId (0, 1)
+                let attackerAttack = 100
+                let defenderHp = 5
+                let gameMap = fromList [(homeRegion, (baseSoldier playerId)&attack.~attackerAttack), (enemyRegion, (baseSoldier otherPlayerId)&hp.~defenderHp)]
+                let newMap = testState gameMap playerId $ soldierAttack homeRegion enemyRegion
+                fmap (member enemyRegion) newMap `shouldBe` Right False
+
