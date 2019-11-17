@@ -5286,6 +5286,9 @@ var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $elm$core$Platform$Sub$batch = _Platform_batch;
 var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
 var $author$project$GameApi$Movement = {$: 'Movement'};
+var $author$project$Main$ReceiveUnits = function (a) {
+	return {$: 'ReceiveUnits', a: a};
+};
 var $author$project$Main$Success = {$: 'Success'};
 var $author$project$Main$SelectOne = function (a) {
 	return {$: 'SelectOne', a: a};
@@ -5306,104 +5309,10 @@ var $author$project$Main$addSelection = F2(
 				return $author$project$Main$SelectNone;
 		}
 	});
-var $author$project$Main$Error = {$: 'Error'};
-var $author$project$Main$handleError = F2(
-	function (f, result) {
-		if (result.$ === 'Err') {
-			return $author$project$Main$Error;
-		} else {
-			var x = result.a;
-			return f(x);
-		}
-	});
-var $elm$core$List$append = F2(
-	function (xs, ys) {
-		if (!ys.b) {
-			return xs;
-		} else {
-			return A3($elm$core$List$foldr, $elm$core$List$cons, ys, xs);
-		}
-	});
-var $elm$core$List$concat = function (lists) {
-	return A3($elm$core$List$foldr, $elm$core$List$append, _List_Nil, lists);
-};
-var $elm$url$Url$Builder$toQueryPair = function (_v0) {
-	var key = _v0.a;
-	var value = _v0.b;
-	return key + ('=' + value);
-};
-var $elm$url$Url$Builder$toQuery = function (parameters) {
-	if (!parameters.b) {
-		return '';
-	} else {
-		return '?' + A2(
-			$elm$core$String$join,
-			'&',
-			A2($elm$core$List$map, $elm$url$Url$Builder$toQueryPair, parameters));
-	}
-};
-var $elm$url$Url$Builder$crossOrigin = F3(
-	function (prePath, pathSegments, parameters) {
-		return prePath + ('/' + (A2($elm$core$String$join, '/', pathSegments) + $elm$url$Url$Builder$toQuery(parameters)));
-	});
-var $elm$http$Http$BadStatus_ = F2(
-	function (a, b) {
-		return {$: 'BadStatus_', a: a, b: b};
-	});
-var $elm$http$Http$BadUrl_ = function (a) {
-	return {$: 'BadUrl_', a: a};
-};
-var $elm$http$Http$GoodStatus_ = F2(
-	function (a, b) {
-		return {$: 'GoodStatus_', a: a, b: b};
-	});
-var $elm$http$Http$NetworkError_ = {$: 'NetworkError_'};
-var $elm$http$Http$Receiving = function (a) {
-	return {$: 'Receiving', a: a};
-};
-var $elm$http$Http$Sending = function (a) {
-	return {$: 'Sending', a: a};
-};
-var $elm$http$Http$Timeout_ = {$: 'Timeout_'};
-var $elm$core$Maybe$isJust = function (maybe) {
-	if (maybe.$ === 'Just') {
-		return true;
-	} else {
-		return false;
-	}
-};
-var $elm$core$Platform$sendToSelf = _Platform_sendToSelf;
-var $elm$core$Basics$compare = _Utils_compare;
-var $elm$core$Dict$get = F2(
-	function (targetKey, dict) {
-		get:
-		while (true) {
-			if (dict.$ === 'RBEmpty_elm_builtin') {
-				return $elm$core$Maybe$Nothing;
-			} else {
-				var key = dict.b;
-				var value = dict.c;
-				var left = dict.d;
-				var right = dict.e;
-				var _v1 = A2($elm$core$Basics$compare, targetKey, key);
-				switch (_v1.$) {
-					case 'LT':
-						var $temp$targetKey = targetKey,
-							$temp$dict = left;
-						targetKey = $temp$targetKey;
-						dict = $temp$dict;
-						continue get;
-					case 'EQ':
-						return $elm$core$Maybe$Just(value);
-					default:
-						var $temp$targetKey = targetKey,
-							$temp$dict = right;
-						targetKey = $temp$targetKey;
-						dict = $temp$dict;
-						continue get;
-				}
-			}
-		}
+var $elm$core$Basics$composeR = F3(
+	function (f, g, x) {
+		return g(
+			f(x));
 	});
 var $elm$core$Dict$Black = {$: 'Black'};
 var $elm$core$Dict$RBNode_elm_builtin = F5(
@@ -5465,6 +5374,7 @@ var $elm$core$Dict$balance = F5(
 			}
 		}
 	});
+var $elm$core$Basics$compare = _Utils_compare;
 var $elm$core$Dict$insertHelp = F3(
 	function (key, value, dict) {
 		if (dict.$ === 'RBEmpty_elm_builtin') {
@@ -5511,6 +5421,107 @@ var $elm$core$Dict$insert = F3(
 		} else {
 			var x = _v0;
 			return x;
+		}
+	});
+var $elm$core$Dict$fromList = function (assocs) {
+	return A3(
+		$elm$core$List$foldl,
+		F2(
+			function (_v0, dict) {
+				var key = _v0.a;
+				var value = _v0.b;
+				return A3($elm$core$Dict$insert, key, value, dict);
+			}),
+		$elm$core$Dict$empty,
+		assocs);
+};
+var $author$project$Main$gameId = 1;
+var $elm$core$List$append = F2(
+	function (xs, ys) {
+		if (!ys.b) {
+			return xs;
+		} else {
+			return A3($elm$core$List$foldr, $elm$core$List$cons, ys, xs);
+		}
+	});
+var $elm$core$List$concat = function (lists) {
+	return A3($elm$core$List$foldr, $elm$core$List$append, _List_Nil, lists);
+};
+var $elm$url$Url$Builder$toQueryPair = function (_v0) {
+	var key = _v0.a;
+	var value = _v0.b;
+	return key + ('=' + value);
+};
+var $elm$url$Url$Builder$toQuery = function (parameters) {
+	if (!parameters.b) {
+		return '';
+	} else {
+		return '?' + A2(
+			$elm$core$String$join,
+			'&',
+			A2($elm$core$List$map, $elm$url$Url$Builder$toQueryPair, parameters));
+	}
+};
+var $elm$url$Url$Builder$crossOrigin = F3(
+	function (prePath, pathSegments, parameters) {
+		return prePath + ('/' + (A2($elm$core$String$join, '/', pathSegments) + $elm$url$Url$Builder$toQuery(parameters)));
+	});
+var $elm$http$Http$BadStatus_ = F2(
+	function (a, b) {
+		return {$: 'BadStatus_', a: a, b: b};
+	});
+var $elm$http$Http$BadUrl_ = function (a) {
+	return {$: 'BadUrl_', a: a};
+};
+var $elm$http$Http$GoodStatus_ = F2(
+	function (a, b) {
+		return {$: 'GoodStatus_', a: a, b: b};
+	});
+var $elm$http$Http$NetworkError_ = {$: 'NetworkError_'};
+var $elm$http$Http$Receiving = function (a) {
+	return {$: 'Receiving', a: a};
+};
+var $elm$http$Http$Sending = function (a) {
+	return {$: 'Sending', a: a};
+};
+var $elm$http$Http$Timeout_ = {$: 'Timeout_'};
+var $elm$core$Maybe$isJust = function (maybe) {
+	if (maybe.$ === 'Just') {
+		return true;
+	} else {
+		return false;
+	}
+};
+var $elm$core$Platform$sendToSelf = _Platform_sendToSelf;
+var $elm$core$Dict$get = F2(
+	function (targetKey, dict) {
+		get:
+		while (true) {
+			if (dict.$ === 'RBEmpty_elm_builtin') {
+				return $elm$core$Maybe$Nothing;
+			} else {
+				var key = dict.b;
+				var value = dict.c;
+				var left = dict.d;
+				var right = dict.e;
+				var _v1 = A2($elm$core$Basics$compare, targetKey, key);
+				switch (_v1.$) {
+					case 'LT':
+						var $temp$targetKey = targetKey,
+							$temp$dict = left;
+						targetKey = $temp$targetKey;
+						dict = $temp$dict;
+						continue get;
+					case 'EQ':
+						return $elm$core$Maybe$Just(value);
+					default:
+						var $temp$targetKey = targetKey,
+							$temp$dict = right;
+						targetKey = $temp$targetKey;
+						dict = $temp$dict;
+						continue get;
+				}
+			}
 		}
 	});
 var $elm$core$Dict$getMin = function (dict) {
@@ -5886,11 +5897,8 @@ var $elm$core$Dict$update = F3(
 			return A2($elm$core$Dict$remove, targetKey, dictionary);
 		}
 	});
-var $elm$core$Basics$composeR = F3(
-	function (f, g, x) {
-		return g(
-			f(x));
-	});
+var $elm$http$Http$emptyBody = _Http_emptyBody;
+var $elm$json$Json$Decode$decodeString = _Json_runOnString;
 var $elm$http$Http$expectStringResponse = F2(
 	function (toMsg, toResult) {
 		return A3(
@@ -5898,6 +5906,17 @@ var $elm$http$Http$expectStringResponse = F2(
 			'',
 			$elm$core$Basics$identity,
 			A2($elm$core$Basics$composeR, toResult, toMsg));
+	});
+var $elm$core$Result$mapError = F2(
+	function (f, result) {
+		if (result.$ === 'Ok') {
+			var v = result.a;
+			return $elm$core$Result$Ok(v);
+		} else {
+			var e = result.a;
+			return $elm$core$Result$Err(
+				f(e));
+		}
 	});
 var $elm$http$Http$BadBody = function (a) {
 	return {$: 'BadBody', a: a};
@@ -5910,17 +5929,6 @@ var $elm$http$Http$BadUrl = function (a) {
 };
 var $elm$http$Http$NetworkError = {$: 'NetworkError'};
 var $elm$http$Http$Timeout = {$: 'Timeout'};
-var $elm$core$Result$mapError = F2(
-	function (f, result) {
-		if (result.$ === 'Ok') {
-			var v = result.a;
-			return $elm$core$Result$Ok(v);
-		} else {
-			var e = result.a;
-			return $elm$core$Result$Err(
-				f(e));
-		}
-	});
 var $elm$http$Http$resolve = F2(
 	function (toResult, response) {
 		switch (response.$) {
@@ -5944,12 +5952,19 @@ var $elm$http$Http$resolve = F2(
 					toResult(body));
 		}
 	});
-var $elm$http$Http$expectString = function (toMsg) {
-	return A2(
-		$elm$http$Http$expectStringResponse,
-		toMsg,
-		$elm$http$Http$resolve($elm$core$Result$Ok));
-};
+var $elm$http$Http$expectJson = F2(
+	function (toMsg, decoder) {
+		return A2(
+			$elm$http$Http$expectStringResponse,
+			toMsg,
+			$elm$http$Http$resolve(
+				function (string) {
+					return A2(
+						$elm$core$Result$mapError,
+						$elm$json$Json$Decode$errorToString,
+						A2($elm$json$Json$Decode$decodeString, decoder, string));
+				}));
+	});
 var $elm$core$List$maybeCons = F3(
 	function (f, mx, xs) {
 		var _v0 = f(mx);
@@ -5968,72 +5983,59 @@ var $elm$core$List$filterMap = F2(
 			_List_Nil,
 			xs);
 	});
-var $elm$http$Http$jsonBody = function (value) {
-	return A2(
-		_Http_pair,
-		'application/json',
-		A2($elm$json$Json$Encode$encode, 0, value));
-};
-var $elm$json$Json$Encode$string = _Json_wrap;
-var $author$project$GameApi$jsonEncPlayerInputType = function (val) {
-	if (val.$ === 'Movement') {
-		return $elm$json$Json$Encode$string('Movement');
-	} else {
-		return $elm$json$Json$Encode$string('Attack');
-	}
-};
-var $elm$json$Json$Encode$int = _Json_wrap;
-var $elm$json$Json$Encode$list = F2(
-	function (func, entries) {
-		return _Json_wrap(
-			A3(
-				$elm$core$List$foldl,
-				_Json_addEntry(func),
-				_Json_emptyArray(_Utils_Tuple0),
-				entries));
+var $elm$json$Json$Decode$index = _Json_decodeIndex;
+var $elm$json$Json$Decode$int = _Json_decodeInt;
+var $bartavelle$json_helpers$Json$Helpers$tuple2 = F2(
+	function (a, b) {
+		return _Utils_Tuple2(a, b);
 	});
-var $author$project$GameApi$jsonEncRegionId = function (val) {
-	return function (_v0) {
-		var t1 = _v0.a;
-		var t2 = _v0.b;
+var $author$project$GameApi$jsonDecRegionId = A3(
+	$elm$json$Json$Decode$map2,
+	$bartavelle$json_helpers$Json$Helpers$tuple2,
+	A2($elm$json$Json$Decode$index, 0, $elm$json$Json$Decode$int),
+	A2($elm$json$Json$Decode$index, 1, $elm$json$Json$Decode$int));
+var $author$project$GameApi$jsonDecPlayerId = $elm$json$Json$Decode$int;
+var $bartavelle$json_helpers$Json$Helpers$custom = $elm$json$Json$Decode$map2($elm$core$Basics$apR);
+var $elm$json$Json$Decode$field = _Json_decodeField;
+var $bartavelle$json_helpers$Json$Helpers$required = F3(
+	function (key, valDecoder, decoder) {
 		return A2(
-			$elm$json$Json$Encode$list,
-			$elm$core$Basics$identity,
-			_List_fromArray(
-				[
-					$elm$json$Json$Encode$int(t1),
-					$elm$json$Json$Encode$int(t2)
-				]));
-	}(val);
-};
-var $elm$json$Json$Encode$object = function (pairs) {
-	return _Json_wrap(
+			$bartavelle$json_helpers$Json$Helpers$custom,
+			A2($elm$json$Json$Decode$field, key, valDecoder),
+			decoder);
+	});
+var $author$project$GameApi$jsonDecSoldierUnit = A3(
+	$bartavelle$json_helpers$Json$Helpers$required,
+	'_faction',
+	$author$project$GameApi$jsonDecPlayerId,
+	A3(
+		$bartavelle$json_helpers$Json$Helpers$required,
+		'_range',
+		$elm$json$Json$Decode$int,
 		A3(
-			$elm$core$List$foldl,
-			F2(
-				function (_v0, obj) {
-					var k = _v0.a;
-					var v = _v0.b;
-					return A3(_Json_addField, k, v, obj);
-				}),
-			_Json_emptyObject(_Utils_Tuple0),
-			pairs));
-};
-var $author$project$GameApi$jsonEncPlayerInput = function (val) {
-	return $elm$json$Json$Encode$object(
-		_List_fromArray(
-			[
-				_Utils_Tuple2(
-				'_inputType',
-				$author$project$GameApi$jsonEncPlayerInputType(val.inputType)),
-				_Utils_Tuple2(
-				'_origin',
-				$author$project$GameApi$jsonEncRegionId(val.origin)),
-				_Utils_Tuple2(
-				'_destination',
-				$author$project$GameApi$jsonEncRegionId(val.destination))
-			]));
-};
+			$bartavelle$json_helpers$Json$Helpers$required,
+			'_attack',
+			$elm$json$Json$Decode$int,
+			A3(
+				$bartavelle$json_helpers$Json$Helpers$required,
+				'_movement',
+				$elm$json$Json$Decode$int,
+				A3(
+					$bartavelle$json_helpers$Json$Helpers$required,
+					'_hp',
+					$elm$json$Json$Decode$int,
+					$elm$json$Json$Decode$succeed(
+						F5(
+							function (p_hp, p_movement, p_attack, p_range, p_faction) {
+								return {attack: p_attack, faction: p_faction, hp: p_hp, movement: p_movement, range: p_range};
+							})))))));
+var $elm$json$Json$Decode$list = _Json_decodeList;
+var $author$project$GameApi$jsonDecUnitPositions = $elm$json$Json$Decode$list(
+	A3(
+		$elm$json$Json$Decode$map2,
+		$bartavelle$json_helpers$Json$Helpers$tuple2,
+		A2($elm$json$Json$Decode$index, 0, $author$project$GameApi$jsonDecRegionId),
+		A2($elm$json$Json$Decode$index, 1, $author$project$GameApi$jsonDecSoldierUnit)));
 var $elm$http$Http$Request = function (a) {
 	return {$: 'Request', a: a};
 };
@@ -6184,6 +6186,115 @@ var $elm$http$Http$request = function (r) {
 		$elm$http$Http$Request(
 			{allowCookiesFromOtherDomains: false, body: r.body, expect: r.expect, headers: r.headers, method: r.method, timeout: r.timeout, tracker: r.tracker, url: r.url}));
 };
+var $author$project$GameApi$getGameByGameIdGameState = F2(
+	function (capture_gameId, toMsg) {
+		var params = A2(
+			$elm$core$List$filterMap,
+			$elm$core$Basics$identity,
+			$elm$core$List$concat(_List_Nil));
+		return $elm$http$Http$request(
+			{
+				body: $elm$http$Http$emptyBody,
+				expect: A2($elm$http$Http$expectJson, toMsg, $author$project$GameApi$jsonDecUnitPositions),
+				headers: _List_Nil,
+				method: 'GET',
+				timeout: $elm$core$Maybe$Nothing,
+				tracker: $elm$core$Maybe$Nothing,
+				url: A3(
+					$elm$url$Url$Builder$crossOrigin,
+					'',
+					_List_fromArray(
+						[
+							'game',
+							$elm$core$String$fromInt(capture_gameId),
+							'gameState'
+						]),
+					params)
+			});
+	});
+var $author$project$Main$Error = {$: 'Error'};
+var $author$project$Main$handleError = F2(
+	function (f, result) {
+		if (result.$ === 'Err') {
+			return $author$project$Main$Error;
+		} else {
+			var x = result.a;
+			return f(x);
+		}
+	});
+var $author$project$Main$playerId = 1;
+var $elm$http$Http$expectString = function (toMsg) {
+	return A2(
+		$elm$http$Http$expectStringResponse,
+		toMsg,
+		$elm$http$Http$resolve($elm$core$Result$Ok));
+};
+var $elm$http$Http$jsonBody = function (value) {
+	return A2(
+		_Http_pair,
+		'application/json',
+		A2($elm$json$Json$Encode$encode, 0, value));
+};
+var $elm$json$Json$Encode$string = _Json_wrap;
+var $author$project$GameApi$jsonEncPlayerInputType = function (val) {
+	if (val.$ === 'Movement') {
+		return $elm$json$Json$Encode$string('Movement');
+	} else {
+		return $elm$json$Json$Encode$string('Attack');
+	}
+};
+var $elm$json$Json$Encode$int = _Json_wrap;
+var $elm$json$Json$Encode$list = F2(
+	function (func, entries) {
+		return _Json_wrap(
+			A3(
+				$elm$core$List$foldl,
+				_Json_addEntry(func),
+				_Json_emptyArray(_Utils_Tuple0),
+				entries));
+	});
+var $author$project$GameApi$jsonEncRegionId = function (val) {
+	return function (_v0) {
+		var t1 = _v0.a;
+		var t2 = _v0.b;
+		return A2(
+			$elm$json$Json$Encode$list,
+			$elm$core$Basics$identity,
+			_List_fromArray(
+				[
+					$elm$json$Json$Encode$int(t1),
+					$elm$json$Json$Encode$int(t2)
+				]));
+	}(val);
+};
+var $elm$json$Json$Encode$object = function (pairs) {
+	return _Json_wrap(
+		A3(
+			$elm$core$List$foldl,
+			F2(
+				function (_v0, obj) {
+					var k = _v0.a;
+					var v = _v0.b;
+					return A3(_Json_addField, k, v, obj);
+				}),
+			_Json_emptyObject(_Utils_Tuple0),
+			pairs));
+};
+var $author$project$GameApi$jsonEncPlayerInput = function (val) {
+	return $elm$json$Json$Encode$object(
+		_List_fromArray(
+			[
+				_Utils_Tuple2(
+				'_inputType',
+				$author$project$GameApi$jsonEncPlayerInputType(val.inputType)),
+				_Utils_Tuple2(
+				'_origin',
+				$author$project$GameApi$jsonEncRegionId(val.origin)),
+				_Utils_Tuple2(
+				'_destination',
+				$author$project$GameApi$jsonEncRegionId(val.destination))
+			]));
+};
 var $author$project$GameApi$postGameByGameIdGameStateByPlayerId = F4(
 	function (capture_gameId, capture_playerId, body, toMsg) {
 		var params = A2(
@@ -6242,8 +6353,6 @@ var $author$project$Main$update = F2(
 						{units: r}),
 					$elm$core$Platform$Cmd$none);
 			case 'SendCommand':
-				var playerId = 1;
-				var gameId = 1;
 				var cmd = function () {
 					var _v1 = model.selection;
 					if (_v1.$ === 'SelectTwo') {
@@ -6251,8 +6360,8 @@ var $author$project$Main$update = F2(
 						var destination = _v1.b;
 						return A4(
 							$author$project$GameApi$postGameByGameIdGameStateByPlayerId,
-							playerId,
-							gameId,
+							$author$project$Main$playerId,
+							$author$project$Main$gameId,
 							{destination: destination, inputType: $author$project$GameApi$Movement, origin: origin},
 							$author$project$Main$handleError(
 								$elm$core$Basics$always($author$project$Main$Success)));
@@ -6260,9 +6369,19 @@ var $author$project$Main$update = F2(
 						return $elm$core$Platform$Cmd$none;
 					}
 				}();
-				return _Utils_Tuple2(model, cmd);
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{selection: $author$project$Main$SelectNone}),
+					cmd);
 			case 'Success':
-				return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+				return _Utils_Tuple2(
+					model,
+					A2(
+						$author$project$GameApi$getGameByGameIdGameState,
+						$author$project$Main$gameId,
+						$author$project$Main$handleError(
+							A2($elm$core$Basics$composeR, $elm$core$Dict$fromList, $author$project$Main$ReceiveUnits))));
 			default:
 				return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 		}

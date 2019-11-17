@@ -6,6 +6,10 @@ import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
 import Platform.Cmd exposing (..)
 
+
+playerId = 1
+gameId = 1
+
 main =
   Browser.element 
     { 
@@ -57,8 +61,6 @@ update msg model =
       ({model | units = r}, Cmd.none)
     SendCommand ->
       let 
-        playerId = 1
-        gameId = 1
         cmd =
           case model.selection of
             SelectTwo origin destination -> 
@@ -68,8 +70,8 @@ update msg model =
                 {origin = origin, destination = destination, inputType = GameApi.Movement}
                 (handleError (always Success))
             _ -> Cmd.none
-      in (model, cmd)
-    Success -> (model, Cmd.none)
+      in ({ model | selection = SelectNone }, cmd)
+    Success -> (model, GameApi.getGameByGameIdGameState gameId (handleError (Dict.fromList >> ReceiveUnits)))
     Error -> (model, Cmd.none)
 
 createTable len f = 

@@ -28,13 +28,11 @@ import Polysemy.Internal.Combinators
 import Polysemy.Input
 import Servant.Checked.Exceptions
 import Network.HTTP.Types.Status
+import Debug.Trace
 import qualified Control.Monad.State.Lazy as Mtl
 
-data Game = Game { _gameBorders :: Borders, _turnNumber :: Int, _unitPositions :: UnitPositions}
 
-makeLenses ''Game
-
-type GameHub = Map GameId (TVar Game)
+type GameHub = TVar (Map GameId (TVar Game))
 
 newtype GameId = GameId Integer deriving (Num, Eq, Ord, Show, FromHttpApiData, Generic, ToJSON)
 
@@ -69,50 +67,47 @@ runCurrentPlayerInfo :: Members '[Reader PlayerId] r => InterpreterFor CurrentPl
 runCurrentPlayerInfo = interpret $ \case
     GetCurrentPlayerId -> ask @PlayerId
 
- 
-lookupReaderMap :: Ord k => Members '[Reader (Map k a), Error (KeyNotFoundError k)] r => k -> Sem r a
-lookupReaderMap key = do
-    result <- asks (Data.Map.lookup key)
-    case result of
+lookupGame :: Members '[Reader GameHub, Embed STM, Error (KeyNotFoundError GameId)] r => GameId -> Sem r (TVar Game)
+lookupGame key = do
+    gameHubTVar <- ask @GameHub
+    gameHubMap <- embed $ readTVar $ gameHubTVar
+    lookupMap key gameHubMap
+    
+lookupMap :: Ord k => Members '[Error (KeyNotFoundError k)] r => k -> Map k a -> Sem r a
+lookupMap key map = do
+    case Data.Map.lookup key map of
         Just r  -> pure r
         Nothing -> throw (KeyNotFoundError key)
 
-runStateAsReaderTVar :: Members '[Embed STM] r => Sem (State s ': r) a -> Sem (Reader (TVar s) ': r) a
+runStateAsReaderTVar :: Show s => Members '[Embed STM] r => Sem (State s ': r) a -> Sem (Reader (TVar s) ': r) a
 runStateAsReaderTVar = reinterpret $ \case
-    Get     -> asks readTVar >>= embed
+    Get     -> (trace "runStateAsReaderTVar" $ asks readTVar) >>= embed
     Put s   -> do
         var <- ask
         embed $ modifyTVar var (const s) 
 
-runTVarGame :: Members '[Input GameId, Reader GameHub,  Error (KeyNotFoundError GameId)] r => InterpreterFor (Reader (TVar Game)) r
-runTVarGame sem = do
-    key <- input @GameId
-    game <- lookupReaderMap key
-    runReader game sem
+runTVarGame :: Members '[Reader Game, Embed STM] r => InterpreterFor (Reader (TVar Game)) r
+runTVarGame sem = undefined
 
 runGameTurn :: 
     Members '[
-        Reader PlayerId,
-        Reader GameHub, 
-        Input GameId, 
-        Error (KeyNotFoundError GameId),
         Error PlayerMoveInputError,
-        Embed STM
+        State Game
     ] r => 
+    PlayerId ->
     Sem (
         ReadMapInfo ': 
         UnitAction ': 
-        State UnitPositions ':
-        State Game ':
         CurrentPlayerInfo ':
+        Reader PlayerId ':
         r
      ) a ->
     Sem r a
-runGameTurn = runCurrentPlayerInfo . runTVarGame . runStateAsReaderTVar . runPlayerActions
+runGameTurn playerId = runReader @PlayerId playerId . runCurrentPlayerInfo . runPlayerActions
 
 
-runPlayerActions :: Member (State Game) r => Sem (ReadMapInfo ': UnitAction ': State UnitPositions ': r) a -> Sem r a
-runPlayerActions = zoomEffect unitPositions . runUnitMoving . runReadMapInfo
+runPlayerActions :: Member (State Game) r => Sem (ReadMapInfo ': UnitAction ': r) a -> Sem r a
+runPlayerActions = runUnitMoving . runReadMapInfo
 
     
 zoomEffect :: Member (State outer) r => Lens' outer inner -> InterpreterFor (State inner) r

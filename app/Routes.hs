@@ -66,7 +66,7 @@ type GameApi' =
 type GameApi = 
     "game" :> (
         Get '[JSON] [GameId] :<|>
-        Capture "gameId" GameId :> Throws (KeyNotFoundError GameId) :> (
+        Capture "gameId" GameId :> (
             "gameState" :> (
                 Get '[JSON] UnitPositions :<|>
                 Capture "playerId" PlayerId :> ReqBody '[JSON] PlayerInput :> Throws PlayerMoveInputError :> Post '[JSON] ()

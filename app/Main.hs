@@ -50,47 +50,47 @@ import Data.Either
 import Control.Monad
 import Servant.Auth.Server
 import ServerHandler
+import Debug.Trace
 
 instance ToJWT PlayerId
 instance FromJWT PlayerId
 
 
-type GameMonad = Sem '[Reader GameHub, Embed STM]
+type GameMonad = Sem '[Reader (TVar Game), Embed STM]
 
 runErrors :: 
-    IsMember (KeyNotFoundError (GameId)) es => 
-    IsMember PlayerMoveInputError es => 
-    Sem (Error PlayerMoveInputError ': Error (KeyNotFoundError (GameId)) ': r) a -> 
-    Sem r (Envelope es a)
-runErrors = fmap join . runErrorToEnv @(KeyNotFoundError GameId) . runErrorToEnv @PlayerMoveInputError
+    --IsMember PlayerMoveInputError es => 
+    Sem (Error PlayerMoveInputError ': r) a -> 
+    Sem r (Envelope '[PlayerMoveInputError] a)
+runErrors = runErrorToEnv @PlayerMoveInputError
 
 
-getGame :: Members '[Reader GameHub, Embed STM, Error (KeyNotFoundError GameId)] r => GameId -> Sem r Game
-getGame gameId = do 
-    game <- lookupReaderMap gameId
+getGame :: Members '[Reader (TVar Game), Embed STM] r => Sem r Game
+getGame = do 
+    game <- ask
     embed $ readTVar game
 
 getGameIds :: GameMonad [GameId]
-getGameIds = asks keys
+getGameIds = pure [GameId 1]
 
-getGameState :: GameId -> GameMonad (Envelope '[KeyNotFoundError GameId] UnitPositions)
-getGameState = runErrorToEnv . fmap (view $ unitPositions) . getGame
+getGameState :: GameMonad UnitPositions
+getGameState = fmap (view $ unitPositions) $ getGame
 
 
-mapBorders :: GameId -> GameMonad (Envelope '[KeyNotFoundError GameId] Borders)
-mapBorders = runErrorToEnv . fmap (_gameBorders) . getGame
+mapBorders :: GameMonad Borders
+mapBorders = fmap (view $ gameBorders) $ getGame
 
-updateGameMap :: GameId -> PlayerId -> PlayerInput -> GameMonad (Envelope '[KeyNotFoundError GameId, PlayerMoveInputError] ())
-updateGameMap gameId playerId moves = 
-    runErrors $ runReader playerId $ runInputConst gameId $ runGameTurn $ handlePlayerInput moves
+updateGameMap :: PlayerId -> PlayerInput -> GameMonad (Envelope '[PlayerMoveInputError] ())
+updateGameMap playerId moves = 
+    runStateAsReaderTVar $ runErrors $ runGameTurn playerId $ handlePlayerInput $ trace "updateGameMap" $ moves
 
-gameApi gameId = (getGameState gameId :<|> updateGameMap gameId) :<|> mapBorders gameId
+gameApi gameId = (getGameState :<|> updateGameMap) :<|> mapBorders
 
 
 riskyApi :: ServerT FullApi GameMonad
 riskyApi = (pure game) :<|> serveStaticFiles :<|> getGameIds :<|> gameApi  
 
-riskyServer region = hoistServer (Proxy :: Proxy FullApi) (riskyTToHandler region) riskyApi
+riskyServer region = hoistServer (Proxy :: Proxy FullApi) (trace "hoist" $! gameMonadToHandler region) riskyApi
 
 writeJSFiles :: IO ()
 writeJSFiles = writeJSForAPI (Proxy :: Proxy GameApi) vanillaJS "/home/bruno/git/risky/app/static/api.js"
@@ -103,19 +103,15 @@ serveStaticFiles = serveDirectoryWebApp "/home/bruno/git/risky/app/static"
 
 initGame = Game (borders 15 15) 0 baseUnitPositions
 
-
-
-
-riskyTToHandler :: GameHub -> GameMonad a -> Handler a
-riskyTToHandler hub r = liftIO $ atomically $ runM $ runReader hub r
+gameMonadToHandler :: TVar Game -> GameMonad a -> Handler a
+gameMonadToHandler game r = liftIO $ atomically  $ runM $ runReader game r 
 
 
 app region = serve (Proxy :: Proxy FullApi) (riskyServer region)
 
 main :: IO ()
 main = do
+    putStrLn "Start server"
     game <- newTVarIO initGame
     jwtConfig <- fmap defaultJWTSettings generateKey
-    let newGame = Data.Map.fromList [(1, game)]
-    writeJSFiles
-    Network.Wai.Handler.Warp.run 8081 (app newGame)
+    Network.Wai.Handler.Warp.run 8081 (app game)

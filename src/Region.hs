@@ -21,18 +21,21 @@ import Polysemy
 import Polysemy.State
 import Soldier
 import Data.Coerce
+import Debug.Trace
+
 
 newtype RegionId = RegionId (Int, Int) deriving (Show, Eq, Ord, ToJSON, FromJSON, ToJSONKey, FromJSONKey)
 
-encodeRegionId (RegionId (x, y)) = pack $ show x <> "_" <> show y
+newtype Borders = Borders (Map RegionId [RegionId]) deriving (FromJSON, ToJSON, Show)
 
-parseRegionId id =
-    let (x, y) = breakOn "_" id in
-    case (\x y ->  RegionId (fst x, fst y)) <$> decimal x <*> decimal (Data.Text.tail y) of
-        Right regionId -> pure regionId
-        Left error -> fail error
+newtype UnitPositions = UnitPositions (Map RegionId SoldierUnit) deriving (FromJSON, ToJSON, Show)
 
-newtype Borders = Borders (Map RegionId [RegionId]) deriving (FromJSON, ToJSON)
+data Game = Game { _gameBorders :: Borders, _turnNumber :: Int, _unitPositions :: UnitPositions} deriving (Show)
+
+makeLenses ''Game
+
+
+
 newtype Army = Army Int deriving (Show, Eq, Ord, FromJSON, ToJSON, Num)
 class Region a where
     regionId :: a -> RegionId
@@ -70,18 +73,19 @@ getTargetSoldier :: Member ReadMapInfo r => RegionId -> Sem r (Maybe TargetSoldi
 getTargetSoldier regionId = 
     fmap (fmap (TargetSoldier regionId)) $ getUnit regionId
 
-newtype UnitPositions = UnitPositions (Map RegionId SoldierUnit) deriving (FromJSON, ToJSON)
+modifyUnitPositions :: Member (State Game) r => (UnitPositions -> UnitPositions) -> Sem r ()
+modifyUnitPositions = modify . over unitPositions 
 
-runUnitMoving ::Members '[State UnitPositions] r => InterpreterFor UnitAction r
+runUnitMoving ::Members '[State Game] r => InterpreterFor UnitAction r
 runUnitMoving = interpret $ \case
-    Move (TargetSoldier _ playerToMove) (EmptyRegion destination) -> 
-        modify (coerce (Data.Map.insert destination playerToMove))
+    Move (TargetSoldier orign playerToMove) (EmptyRegion destination) -> do
+        modifyUnitPositions (coerce (Data.Map.delete orign . Data.Map.insert destination playerToMove))
     LoseHP damage (TargetSoldier location _) -> 
-        modify (coerce (Data.Map.update (hitSoldier damage) location))
+        modifyUnitPositions (coerce (Data.Map.update (hitSoldier damage) location))
 
 
-runReadMapInfo :: Members '[State UnitPositions] r => InterpreterFor ReadMapInfo r
-runReadMapInfo = interpret $ \(GetUnit regionId) -> gets (Data.Map.lookup regionId . coerce)
+runReadMapInfo :: Members '[State Game] r => InterpreterFor ReadMapInfo r
+runReadMapInfo = interpret $ \(GetUnit regionId) -> gets (Data.Map.lookup regionId . coerce . view unitPositions)
 
 
 baseUnitPositions :: UnitPositions
