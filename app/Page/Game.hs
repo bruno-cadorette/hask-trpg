@@ -12,10 +12,37 @@ import Control.Monad.Reader
 headTemplate title = head_ (title_ title)
 pageTemplate title pageBody = doctypehtml_ (headTemplate title <> body_ pageBody)
 
+css = style_ (".county {\
+        \    border: solid;\
+        \    height: 20px;\
+        \    width: 20px;\
+        \}\
+        \\
+        \div[data-faction='0'] {\
+        \    background-color: lightyellow\
+        \}\
+        \\
+        \div[data-faction='1'] {\
+        \    background-color: greenyellow\
+        \}\
+        \\
+        \div[data-faction='2'] {\
+        \    background-color: cornflowerblue\
+        \}\
+        \\
+        \.selected {\
+        \    background-color: red\
+        \}\
+        \\
+        \.inacessible {\
+        \    filter: brightness(40%);\
+        \}")
+
 game :: Html()
 game = doctypehtml_ $ do
     head_ $ do
         title_ "Game"
+        css
         gameImports
     body_ $ do 
         div_ [id_ "elm-node"] mempty
