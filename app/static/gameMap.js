@@ -28,20 +28,16 @@ function selectCounty(newElem) {
 }
 
 function move(id1, id2) {
+    if (!(id1 in countiesInfo)) {
+        alert("You must select a valid player")
+    }
+
     if (countiesInfo[id1]._faction != player) {
         alert("You can't move thoses troops because it belong to another faction")
         return
     }
-    let migratingPopulation = prompt("How much troop do you want to move? (origin: " + countiesInfo[id1]._population + "), destination: " + countiesInfo[id2]._population + ")")
-    if (!migratingPopulation) {
-        return
-    }
-    if (migratingPopulation > countiesInfo[id1]._population) {
-        move(id1, id2)
-    }
-    else {
-        addAction({ origin: id1, destination: id2, troops: +migratingPopulation })
-    }
+    let actType = id2 in countiesInfo ? "Attack" : "Movement"
+    addAction({ _origin: id1, _destination: id2, _inputType: actType})
 }
 function addAction(action){
     turnActions.push(action);
@@ -65,7 +61,7 @@ function cancelSelection() {
 
 function commit(){
     console.log(turnActions)
-    postGameByGameIdGameStateByPlayerId(gameId, player, turnActions, _ =>{
+    postGameByGameIdGameStateByPlayerId(gameId, player, turnActions[0], _ =>{
         getGameByGameIdGameState(gameId, g => {
             countiesInfo = g
             turnActions = []
@@ -75,7 +71,7 @@ function commit(){
     },console.log);
 }
 function getPositionFromId(id) {
-    return id.split("_")
+    return id[0] + "_" + id[1]
 }
 function deactivateNonSelectionable(id) {
     let neighboors = borders[id];
@@ -116,14 +112,14 @@ function drawMap() {
 
 function updateMap() {
     let allCounty = document.getElementsByClassName("county")
+    console.log(allCounty)
     for (var i = 0; i < allCounty.length; i++) {
         const id = getPositionFromId(allCounty[i].id)
-        console.log(id)
         var info = countiesInfo[id]
         if (info){
             console.log(info)
             allCounty[i].dataset.faction = info._faction;
-            allCounty[i].innerHTML = info._population;
+            allCounty[i].innerHTML = info._hp;
 
         }
     }
@@ -135,7 +131,6 @@ function init(){
         borders = b.data
         getGameByGameIdGameState(gameId, g => {
             countiesInfo = g.data
-            console.log(countiesInfo)
             drawMap();
             updateMap()
         })

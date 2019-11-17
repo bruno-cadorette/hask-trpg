@@ -57,9 +57,6 @@ isRegionOwnedByPlayer regionId = do
     fac <-  getFaction regionId
     return $ Just playerId == fac
 
-isRegionOccupied :: Member ReadMapInfo r => RegionId -> Sem r Bool
-isRegionOccupied = fmap isJust . getFaction
-
 isSoldierMovingTooMuch :: (Region a, Region b, Soldier a) => a -> b -> Bool
 isSoldierMovingTooMuch a b = 
     distance (regionId a) (regionId b) > (soldier a)^.movement
@@ -71,12 +68,6 @@ isSoldierInRange a b =
 
 areAllies :: (Soldier a, Soldier b) => a -> b -> Bool
 areAllies s1 s2 = (soldier s1)^.faction == (soldier s2)^.faction 
-
-areFromSameFactions :: Members '[ReadMapInfo] r => RegionId -> RegionId -> Sem r Bool
-areFromSameFactions regionId1 regionId2 = do
-    fac1 <- getFaction regionId1
-    fac2 <- getFaction regionId2
-    return $ fac1 == fac2
     
 
 soldierMove :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => RegionId -> RegionId -> Sem r ()

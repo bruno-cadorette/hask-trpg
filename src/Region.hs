@@ -20,17 +20,9 @@ import Data.Ord
 import Polysemy
 import Polysemy.State
 import Soldier
+import Data.Coerce
 
-newtype RegionId = RegionId (Int, Int) deriving (Show, Eq, Ord, FromJSONKey)
-
-instance ToJSON RegionId where
-    toJSON = String . encodeRegionId
-instance FromJSON RegionId where
-    parseJSON = withText "RegionId" parseRegionId
-            
-instance ToJSONKey RegionId where
-    toJSONKey = toJSONKeyText encodeRegionId
-
+newtype RegionId = RegionId (Int, Int) deriving (Show, Eq, Ord, ToJSON, FromJSON, ToJSONKey, FromJSONKey)
 
 encodeRegionId (RegionId (x, y)) = pack $ show x <> "_" <> show y
 
@@ -78,22 +70,22 @@ getTargetSoldier :: Member ReadMapInfo r => RegionId -> Sem r (Maybe TargetSoldi
 getTargetSoldier regionId = 
     fmap (fmap (TargetSoldier regionId)) $ getUnit regionId
 
-type UnitPositions = Map RegionId SoldierUnit
+newtype UnitPositions = UnitPositions (Map RegionId SoldierUnit) deriving (FromJSON, ToJSON)
 
 runUnitMoving ::Members '[State UnitPositions] r => InterpreterFor UnitAction r
 runUnitMoving = interpret $ \case
     Move (TargetSoldier _ playerToMove) (EmptyRegion destination) -> 
-        modify (Data.Map.insert destination playerToMove)
+        modify (coerce (Data.Map.insert destination playerToMove))
     LoseHP damage (TargetSoldier location _) -> 
-        modify (Data.Map.update (hitSoldier damage) location)
+        modify (coerce (Data.Map.update (hitSoldier damage) location))
 
 
 runReadMapInfo :: Members '[State UnitPositions] r => InterpreterFor ReadMapInfo r
-runReadMapInfo = interpret $ \(GetUnit regionId) -> gets (Data.Map.lookup regionId)
+runReadMapInfo = interpret $ \(GetUnit regionId) -> gets (Data.Map.lookup regionId . coerce)
 
 
 baseUnitPositions :: UnitPositions
-baseUnitPositions = fromList [(RegionId (2,2), baseSoldier (PlayerId 1)), (RegionId (6,8), baseSoldier (PlayerId 2)) ]
+baseUnitPositions = UnitPositions $ fromList [(RegionId (2,2), baseSoldier (PlayerId 1)), (RegionId (6,8), baseSoldier (PlayerId 2)) ]
 
 allRegionRegionId f x y = do
     x' <- [0..x]

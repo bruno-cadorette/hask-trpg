@@ -80,9 +80,9 @@ getGameState = runErrorToEnv . fmap (view $ unitPositions) . getGame
 mapBorders :: GameId -> GameMonad (Envelope '[KeyNotFoundError GameId] Borders)
 mapBorders = runErrorToEnv . fmap (_gameBorders) . getGame
 
-updateGameMap :: GameId -> PlayerId -> [PlayerInput] -> GameMonad (Envelope '[KeyNotFoundError GameId, PlayerMoveInputError] ())
+updateGameMap :: GameId -> PlayerId -> PlayerInput -> GameMonad (Envelope '[KeyNotFoundError GameId, PlayerMoveInputError] ())
 updateGameMap gameId playerId moves = 
-    runErrors $ runReader playerId $ runInputConst gameId $ runGameTurn $ traverse_ handlePlayerInput moves
+    runErrors $ runReader playerId $ runInputConst gameId $ runGameTurn $ handlePlayerInput moves
 
 gameApi gameId = (getGameState gameId :<|> updateGameMap gameId) :<|> mapBorders gameId
 

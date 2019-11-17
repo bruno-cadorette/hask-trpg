@@ -8,6 +8,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 
 module Routes where
@@ -19,9 +20,11 @@ import Lucid.Base
 import Game.Effects
 import Game.Logic
 import Region
+import Soldier
 import Servant.Checked.Exceptions
 import PlayerManagement
 import Servant.Foreign
+import Servant.Elm
 import Servant.Auth.Server
 
 type FileApi = "static" :> Raw
@@ -54,7 +57,7 @@ type GameApi' =
     Capture "gameId" GameId :> Throws (KeyNotFoundError GameId) :> (
         "gameState" :> (
             Get '[JSON] UnitPositions :<|>
-            ReqBody '[JSON] [PlayerInput] :> Throws PlayerMoveInputError :> Post '[JSON] ()
+            ReqBody '[JSON] PlayerInput :> Throws PlayerMoveInputError :> Post '[JSON] ()
         ) :<|>
         "borders" :> Get '[JSON] Borders
     )
@@ -66,8 +69,40 @@ type GameApi =
         Capture "gameId" GameId :> Throws (KeyNotFoundError GameId) :> (
             "gameState" :> (
                 Get '[JSON] UnitPositions :<|>
-                Capture "playerId" PlayerId :> ReqBody '[JSON] [PlayerInput] :> Throws PlayerMoveInputError :> Post '[JSON] ()
+                Capture "playerId" PlayerId :> ReqBody '[JSON] PlayerInput :> Throws PlayerMoveInputError :> Post '[JSON] ()
             ) :<|>
             "borders" :> Get '[JSON] Borders
         )
     )
+
+
+deriveElmDef defaultOptions ''GameId
+deriveElmDef defaultOptions ''RegionId
+deriveElmDef defaultOptions ''SoldierUnit
+deriveElmDef defaultOptions ''KeyNotFoundError
+deriveElmDef defaultOptions ''PlayerId
+deriveElmDef defaultOptions ''PlayerInput
+deriveElmDef defaultOptions ''PlayerInputType
+deriveElmDef defaultOptions ''PlayerMoveInputError
+deriveElmDef defaultOptions ''UnitPositions
+deriveElmDef defaultOptions ''Borders
+
+elmTypes = [
+    DefineElm (Proxy :: Proxy GameId), 
+    DefineElm (Proxy :: Proxy RegionId), 
+    DefineElm (Proxy :: Proxy SoldierUnit), 
+    DefineElm (Proxy :: Proxy (KeyNotFoundError a)), 
+    DefineElm (Proxy :: Proxy PlayerId),
+    DefineElm (Proxy :: Proxy PlayerInput),
+    DefineElm (Proxy :: Proxy PlayerInputType),
+    DefineElm (Proxy :: Proxy PlayerMoveInputError),
+    DefineElm (Proxy :: Proxy UnitPositions),
+    DefineElm (Proxy :: Proxy Borders)]
+
+elm = 
+    generateElmModule
+        ["GameApi"]
+        defElmImports
+        "GameApi"
+        elmTypes
+        (Proxy :: Proxy GameApi)

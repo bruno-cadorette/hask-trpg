@@ -12,27 +12,21 @@ import Control.Monad.Reader
 headTemplate title = head_ (title_ title)
 pageTemplate title pageBody = doctypehtml_ (headTemplate title <> body_ pageBody)
 
-getGameHub = pure mempty
-
-gameList :: [Html ()]
-gameList = do
-    gameIds <- fmap keys getGameHub
-    return $ pageTemplate "Game List" $ foldMap (\(GameId id) -> li_ $ toHtml $ show id) gameIds
-
-
 game :: Html()
 game = doctypehtml_ $ do
-    head_ (do
+    head_ $ do
         title_ "Game"
-        gameImports)
-    body_ gameBody
+        gameImports
+    body_ $ do 
+        div_ [id_ "elm-node"] mempty
+        script_ "Elm.Main.init({node: document.getElementById('elm-node')})"
 
-
+        
+    
 
 gameImports :: Html()
 gameImports = do
-    script_ [src_ "static/api.js"] ""
-    script_ [src_ "static/gameMap.js"] ""
+    script_ [src_ "static/main.js"] ""
     link_ [rel_ "stylesheet", href_ "static/game.css"]
 
 
