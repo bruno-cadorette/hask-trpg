@@ -54,7 +54,6 @@ game = doctypehtml_ $ do
 gameImports :: Html()
 gameImports = do
     script_ [src_ "static/main.js"] ""
-    link_ [rel_ "stylesheet", href_ "static/game.css"]
 
 
 gameBody :: Html()

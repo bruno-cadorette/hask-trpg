@@ -65,13 +65,9 @@ data UnitAction m a where
 makeSem ''UnitAction
 
 data ReadMapInfo m a where
-    GetUnit :: RegionId -> ReadMapInfo m (Maybe SoldierUnit)
+    GetUnit :: RegionId -> ReadMapInfo m (Either EmptyRegion TargetSoldier)
 
 makeSem ''ReadMapInfo
-
-getTargetSoldier :: Member ReadMapInfo r => RegionId -> Sem r (Maybe TargetSoldier)
-getTargetSoldier regionId = 
-    fmap (fmap (TargetSoldier regionId)) $ getUnit regionId
 
 modifyUnitPositions :: Member (State Game) r => (UnitPositions -> UnitPositions) -> Sem r ()
 modifyUnitPositions = modify . over unitPositions 
@@ -85,7 +81,12 @@ runUnitMoving = interpret $ \case
 
 
 runReadMapInfo :: Members '[State Game] r => InterpreterFor ReadMapInfo r
-runReadMapInfo = interpret $ \(GetUnit regionId) -> gets (Data.Map.lookup regionId . coerce . view unitPositions)
+runReadMapInfo = interpret $ \(GetUnit regionId) -> 
+    gets (
+        maybe (Left $ EmptyRegion regionId) (Right . TargetSoldier regionId). 
+        Data.Map.lookup regionId . 
+        coerce . 
+        view unitPositions)
 
 
 baseUnitPositions :: UnitPositions

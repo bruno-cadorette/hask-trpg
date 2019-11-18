@@ -32,30 +32,14 @@ instance ToJSON PlayerInputType
 instance FromJSON PlayerInput
 instance ToJSON PlayerInput
  
-getPlayerUnit :: Members '[ReadMapInfo, CurrentPlayerInfo] r => RegionId -> Sem r (Maybe TargetSoldier)
+getPlayerUnit :: Members '[ReadMapInfo, CurrentPlayerInfo, Error PlayerMoveInputError] r => RegionId -> Sem r TargetSoldier
 getPlayerUnit regionId = do
-    cond <- isRegionOwnedByPlayer regionId
-    if cond then 
-        getTargetSoldier regionId
-    else
-        pure Nothing
-
-getEmptyRegion :: Member ReadMapInfo r => RegionId -> Sem r (Maybe EmptyRegion)
-getEmptyRegion regionId = do
     unit <- getUnit regionId
-    pure $ if isJust unit then
-        Nothing
-    else 
-        Just $ EmptyRegion regionId
-
-getFaction :: Member ReadMapInfo r => RegionId -> Sem r (Maybe PlayerId)
-getFaction = fmap (preview  (_Just . faction)) . getUnit
-
-isRegionOwnedByPlayer :: Members '[CurrentPlayerInfo, ReadMapInfo] r => RegionId -> Sem r Bool
-isRegionOwnedByPlayer regionId = do
     playerId <- getCurrentPlayerId
-    fac <-  getFaction regionId
-    return $ Just playerId == fac
+    case unit of 
+        Right x
+          | (soldier x)^.faction == playerId -> pure x
+        _ -> throw (NotPlayerOwned regionId)
 
 isSoldierMovingTooMuch :: (Region a, Region b, Soldier a) => a -> b -> Bool
 isSoldierMovingTooMuch a b = 
@@ -68,34 +52,23 @@ isSoldierInRange a b =
 
 areAllies :: (Soldier a, Soldier b) => a -> b -> Bool
 areAllies s1 s2 = (soldier s1)^.faction == (soldier s2)^.faction 
-    
 
-soldierMove :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => RegionId -> RegionId -> Sem r ()
-soldierMove origin destination = do 
-    playerSoldier <- getPlayerUnit origin
-    emptyRegion <- getEmptyRegion destination
-    case (playerSoldier, emptyRegion) of
-        (Nothing, _) -> throw (NotPlayerOwned origin)
-        (_, Nothing) -> throw (RegionOccupied destination)
-        (Just soldier, Just emptyRegion) -> if
-            | isSoldierMovingTooMuch soldier emptyRegion -> throw (MoveTooMuch origin)
-            | otherwise -> move soldier emptyRegion
+soldierMove :: Members '[Error PlayerMoveInputError, UnitAction] r => TargetSoldier -> EmptyRegion -> Sem r ()
+soldierMove soldier emptyRegion 
+    | isSoldierMovingTooMuch soldier emptyRegion = throw (MoveTooMuch $ regionId soldier )
+    | otherwise = move soldier emptyRegion
 
-soldierAttack :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => RegionId -> RegionId -> Sem r ()
-soldierAttack origin destination = do
-    attacker <- getPlayerUnit origin
-    defender <- getTargetSoldier destination
-    case (attacker, defender) of
-        (Nothing, _) -> throw (NotPlayerOwned origin)
-        (_, Nothing) -> throw (RegionNotOccupied destination)
-        (Just attacker, Just defender) -> if
-            | areAllies attacker defender -> throw (AttackAllies origin destination)
-            | not $ isSoldierInRange attacker defender -> throw (AttackTooFar origin destination)
-            | otherwise -> loseHP ((soldier attacker)^.attack) defender
+soldierAttack :: Members '[Error PlayerMoveInputError, UnitAction] r => TargetSoldier -> TargetSoldier -> Sem r ()
+soldierAttack attacker defender
+    | areAllies attacker defender = throw (AttackAllies (regionId attacker) (regionId defender))
+    | not $ isSoldierInRange attacker defender = throw (AttackTooFar (regionId attacker) (regionId defender))
+    | otherwise = loseHP ((soldier attacker)^.attack) defender
 
 
 handlePlayerInput :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => PlayerInput -> Sem r ()
-handlePlayerInput (PlayerInput inputType origin destination) = 
-    case inputType of
-        Movement -> soldierMove origin destination
-        Attack -> soldierAttack origin destination
+handlePlayerInput (PlayerInput inputType origin destination) = do
+    playerUnit <- getPlayerUnit origin
+    targetRegion <- getUnit destination
+    case targetRegion of
+        Right soldier -> soldierAttack playerUnit soldier
+        Left emptyRegion -> soldierMove playerUnit emptyRegion

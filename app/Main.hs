@@ -59,7 +59,6 @@ instance FromJWT PlayerId
 type GameMonad = Sem '[Reader (TVar Game), Embed STM]
 
 runErrors :: 
-    --IsMember PlayerMoveInputError es => 
     Sem (Error PlayerMoveInputError ': r) a -> 
     Sem r (Envelope '[PlayerMoveInputError] a)
 runErrors = runErrorToEnv @PlayerMoveInputError
