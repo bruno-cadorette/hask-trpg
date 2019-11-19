@@ -90,7 +90,7 @@ runReadMapInfo = interpret $ \(GetUnit regionId) ->
 
 
 baseUnitPositions :: UnitPositions
-baseUnitPositions = UnitPositions $ fromList [(RegionId (2,2), baseSoldier (PlayerId 1)), (RegionId (6,8), baseSoldier (PlayerId 2)) ]
+baseUnitPositions = UnitPositions $ fromList [(RegionId (2,2), strongSoldier (PlayerId 1)), (RegionId (6,8), baseSoldier (PlayerId 2)) ]
 
 allRegionRegionId f x y = do
     x' <- [0..x]

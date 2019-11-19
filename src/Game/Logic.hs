@@ -22,6 +22,7 @@ import Data.Foldable
 import Control.Monad
 import Data.Coerce
 import Soldier
+import Debug.Trace
 
 data PlayerInputType = Movement | Attack  deriving(Generic, Show)
 data PlayerInput = PlayerInput { _inputType :: PlayerInputType, _origin :: RegionId, _destination :: RegionId } deriving (Generic, Show)
@@ -67,8 +68,8 @@ soldierAttack attacker defender
 
 handlePlayerInput :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => PlayerInput -> Sem r ()
 handlePlayerInput (PlayerInput inputType origin destination) = do
-    playerUnit <- getPlayerUnit origin
-    targetRegion <- getUnit destination
+    playerUnit <- traceShow origin $ getPlayerUnit origin
+    targetRegion <- traceShow destination $ getUnit destination
     case targetRegion of
         Right soldier -> soldierAttack playerUnit soldier
         Left emptyRegion -> soldierMove playerUnit emptyRegion

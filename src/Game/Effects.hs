@@ -86,25 +86,6 @@ runStateAsReaderTVar = reinterpret $ \case
         var <- ask
         embed $ modifyTVar var (const s) 
 
-runTVarGame :: Members '[Reader Game, Embed STM] r => InterpreterFor (Reader (TVar Game)) r
-runTVarGame sem = undefined
-
-runGameTurn :: 
-    Members '[
-        Error PlayerMoveInputError,
-        State Game
-    ] r => 
-    PlayerId ->
-    Sem (
-        ReadMapInfo ': 
-        UnitAction ': 
-        CurrentPlayerInfo ':
-        Reader PlayerId ':
-        r
-     ) a ->
-    Sem r a
-runGameTurn playerId = runReader @PlayerId playerId . runCurrentPlayerInfo . runPlayerActions
-
 
 runPlayerActions :: Member (State Game) r => Sem (ReadMapInfo ': UnitAction ': r) a -> Sem r a
 runPlayerActions = runUnitMoving . runReadMapInfo

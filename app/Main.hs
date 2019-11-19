@@ -43,6 +43,7 @@ import Data.Foldable
 import Polysemy
 import Polysemy.Error
 import Polysemy.Input
+import Polysemy.State
 import Polysemy.Reader
 import Control.Monad.IO.Class
 import Servant.Checked.Exceptions
@@ -51,6 +52,9 @@ import Control.Monad
 import Servant.Auth.Server
 import ServerHandler
 import Debug.Trace
+import Ai
+import Data.Coerce
+
 
 instance ToJWT PlayerId
 instance FromJWT PlayerId
@@ -63,6 +67,11 @@ runErrors ::
     Sem r (Envelope '[PlayerMoveInputError] a)
 runErrors = runErrorToEnv @PlayerMoveInputError
 
+ignoreErrors ::
+    Monoid a =>
+    Sem (Error PlayerMoveInputError ': r) a -> 
+    Sem r (Envelope '[PlayerMoveInputError] a)
+ignoreErrors = fmap (const (SuccEnvelope mempty)). runErrors
 
 getGame :: Members '[Reader (TVar Game), Embed STM] r => Sem r Game
 getGame = do 
@@ -73,15 +82,23 @@ getGameIds :: GameMonad [GameId]
 getGameIds = pure [GameId 1]
 
 getGameState :: GameMonad UnitPositions
-getGameState = fmap (view $ unitPositions) $ getGame
+getGameState = fmap (view unitPositions) $ getGame
 
 
 mapBorders :: GameMonad Borders
 mapBorders = fmap (view $ gameBorders) $ getGame
 
+updateAi = runStateAsReaderTVar $ runErrors $ runPlayerActions $ do
+    game <- gets (view unitPositions)
+    case generateMove (PlayerId 2) (coerce game) of 
+        Just g -> 
+            runReader @PlayerId (PlayerId 2) $ runCurrentPlayerInfo $ handlePlayerInput g
+        Nothing -> pure ()
+
 updateGameMap :: PlayerId -> PlayerInput -> GameMonad (Envelope '[PlayerMoveInputError] ())
-updateGameMap playerId moves = 
-    runStateAsReaderTVar $ runErrors $ runGameTurn playerId $ handlePlayerInput $ trace "updateGameMap" $ moves
+updateGameMap playerId moves = do
+    runStateAsReaderTVar $ runErrors $ runPlayerActions $ runReader @PlayerId playerId $ runCurrentPlayerInfo $ handlePlayerInput moves
+    updateAi
 
 gameApi gameId = (getGameState :<|> updateGameMap) :<|> mapBorders
 

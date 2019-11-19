@@ -14,19 +14,17 @@ pageTemplate title pageBody = doctypehtml_ (headTemplate title <> body_ pageBody
 
 css = style_ (".county {\
         \    border: solid;\
-        \    height: 20px;\
-        \    width: 20px;\
+        \    height: 40px;\
+        \    width: 40px;\
         \}\
         \\
-        \div[data-faction='0'] {\
-        \    background-color: lightyellow\
+        \.player {\
+        \    background-color: lime\
         \}\
-        \\
-        \div[data-faction='1'] {\
-        \    background-color: greenyellow\
-        \}\
-        \\
-        \div[data-faction='2'] {\
+        \table { border-collapse: collapse; }\
+
+        \tr, td { padding: 0; }\
+        \.enemy {\
         \    background-color: cornflowerblue\
         \}\
         \\

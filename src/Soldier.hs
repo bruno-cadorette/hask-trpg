@@ -17,6 +17,7 @@ instance FromJSON SoldierUnit
 instance ToJSON SoldierUnit
 
 baseSoldier = SoldierUnit 5 2 1 1
+strongSoldier = SoldierUnit 6 2 2 1
 
 class Soldier a where
     soldier :: a -> SoldierUnit
@@ -27,7 +28,7 @@ instance Soldier SoldierUnit where
 hitSoldier :: Int -> SoldierUnit -> Maybe SoldierUnit 
 hitSoldier damage soldier = 
     let newHp = soldier^.hp - damage in
-    if newHp >= 0 then
+    if newHp > 0 then
         Just (set hp newHp soldier)
     else
         Nothing
