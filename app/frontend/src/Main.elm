@@ -5,9 +5,10 @@ import Dict
 import Maybe
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick)
+import Html.Events exposing (..)
 import Platform.Cmd exposing (..)
 import List exposing (..)
+import Time exposing (..)
 
 
 playerId = 1
@@ -16,10 +17,10 @@ gameId = 1
 main =
   Browser.element 
     { 
-      init = \() -> ({selection = SelectNone, units = Dict.empty}, getGameState), 
+      init = \() -> ({selection = SelectNone, units = Dict.empty, playerId = 1, error = ""}, getGameState), 
       update = update, 
       view = view, 
-      subscriptions = always (Sub.none) 
+      subscriptions = always (Time.every 500 (\x -> SendReceiveUnitsCommand))
     }
 
 getGameState = GameApi.getGameByGameIdGameState gameId (handleError (Dict.fromList >> ReceiveUnits))
@@ -48,19 +49,22 @@ addSelection new selection =
 
 type alias Model = {
     selection : Selection GameApi.RegionId,
-    units : Dict.Dict GameApi.RegionId GameApi.SoldierUnit
+    units : Dict.Dict GameApi.RegionId GameApi.SoldierUnit,
+    error : String
   }
 
 type Msg = 
     Select GameApi.RegionId
   | ReceiveUnits (Dict.Dict GameApi.RegionId GameApi.SoldierUnit)
+  | SendReceiveUnitsCommand
   | SendCommand
-  | Error
+  | ChangePlayerId String
+  | Error String
   | Success
 
 handleError f result =
   case result of
-    Err _ -> Error
+    Err err -> Error "invalid move!"
     Ok x -> f x
 
 update msg model =
@@ -69,20 +73,26 @@ update msg model =
       ({model | selection = addSelection r model.selection }, Cmd.none)
     ReceiveUnits r ->
       ({model | units = r}, Cmd.none)
+    SendReceiveUnitsCommand ->
+      (model, getGameState)
     SendCommand ->
       let 
         cmd =
           case model.selection of
             SelectTwo origin destination -> 
               GameApi.postGameByGameIdGameStateByPlayerId 
-                playerId 
                 gameId 
+                model.playerId
                 {origin = origin, destination = destination, inputType = GameApi.Movement}
                 (handleError (always Success))
             _ -> Cmd.none
       in ({ model | selection = SelectNone }, cmd)
-    Success -> (model, getGameState)
-    Error -> (model, Cmd.none)
+    ChangePlayerId str -> 
+      case String.toInt str of
+        Just id -> ({model | playerId = id}, Cmd.none)
+        Nothing -> (model, Cmd.none)
+    Success -> ({ model | error = "" }, Cmd.none)
+    Error err -> ({ model | error = err }, Cmd.none)
 
 createTable len f = 
   let 
@@ -122,7 +132,9 @@ view model = div [] [
   text (showSelection model.selection),
   br [] [],
   button [onClick SendCommand] [text "Send command"],
+  text (model.error),
   br [] [],
-  model.units |> Dict.toList |> List.map showSoldier |> div []
+  model.units |> Dict.toList |> List.map showSoldier |> div [],
+  input [style "position" "fixed", style "bottom" "0", onInput ChangePlayerId] []
   ]
  

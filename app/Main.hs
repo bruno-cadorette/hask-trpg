@@ -87,18 +87,17 @@ getGameState = fmap (view unitPositions) $ getGame
 
 mapBorders :: GameMonad Borders
 mapBorders = fmap (view $ gameBorders) $ getGame
-
+{-
 updateAi = runStateAsReaderTVar $ runErrors $ runPlayerActions $ do
     game <- gets (view unitPositions)
     case generateMove (PlayerId 2) (coerce game) of 
         Just g -> 
             runReader @PlayerId (PlayerId 2) $ runCurrentPlayerInfo $ handlePlayerInput g
         Nothing -> pure ()
-
+-}
 updateGameMap :: PlayerId -> PlayerInput -> GameMonad (Envelope '[PlayerMoveInputError] ())
-updateGameMap playerId moves = do
+updateGameMap playerId moves = 
     runStateAsReaderTVar $ runErrors $ runPlayerActions $ runReader @PlayerId playerId $ runCurrentPlayerInfo $ handlePlayerInput moves
-    updateAi
 
 gameApi gameId = (getGameState :<|> updateGameMap) :<|> mapBorders
 
