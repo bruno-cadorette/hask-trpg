@@ -1,8 +1,9 @@
 module Main exposing(..)
-import GameApi
+import GameApi exposing(..)
 import Browser
 import Dict
 import Maybe
+import Tuple exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
@@ -11,18 +12,21 @@ import List exposing (..)
 import Time exposing (..)
 
 
-playerId = 1
 gameId = 1
+
+initalGameState = 
+  {selection = SelectNone, units = Dict.empty, playerId = 1, error = "", mapInfo = Dict.empty}
 
 main =
   Browser.element 
     { 
-      init = \() -> ({selection = SelectNone, units = Dict.empty, playerId = 1, error = ""}, getGameState), 
+      init = \() -> (initalGameState, Cmd.batch [getMapInfo, getGameState]), 
       update = update, 
       view = view, 
       subscriptions = always (Time.every 500 (\x -> SendReceiveUnitsCommand))
     }
 
+getMapInfo = GameApi.getGameByGameIdBorders gameId (handleError (Dict.fromList >> ReceiveMap))
 getGameState = GameApi.getGameByGameIdGameState gameId (handleError (Dict.fromList >> ReceiveUnits))
 type Selection a =
   SelectNone | SelectOne a | SelectTwo a a
@@ -56,6 +60,7 @@ type alias Model = {
 type Msg = 
     Select GameApi.RegionId
   | ReceiveUnits (Dict.Dict GameApi.RegionId GameApi.SoldierUnit)
+  | ReceiveMap (Dict.Dict GameApi.RegionId GameApi.TerrainType)
   | SendReceiveUnitsCommand
   | SendCommand
   | ChangePlayerId String
@@ -73,6 +78,8 @@ update msg model =
       ({model | selection = addSelection r model.selection }, Cmd.none)
     ReceiveUnits r ->
       ({model | units = r}, Cmd.none)
+    ReceiveMap b ->
+      ( {model | mapInfo = b}, Cmd.none)
     SendReceiveUnitsCommand ->
       (model, getGameState)
     SendCommand ->
@@ -106,16 +113,31 @@ buttonClasses model i j =
   else 
     case Dict.get (i, j) model.units of
       Just soldier -> 
-        if soldier.faction == playerId then
+        if soldier.faction == 1 then
           [class "player"]
         else 
           [class "enemy"]
       Nothing ->
         []
+terrainClass model i j = 
+  case Dict.get (i, j) model.mapInfo of
+    Just terrain ->
+      case terrain of
+        Grass -> class "grass"
+        Water -> class "water"
+        Wall -> class "wall"
+    Nothing -> class ""
 
 individualButton model i j = 
   let hp = Dict.get (i, j) model.units |> Maybe.map (\x -> [text <| String.fromInt x.hp]) |> Maybe.withDefault []
-  in button ([onClick <| Select (i, j), class "county"] ++ (buttonClasses model i j)) hp
+  in button ([onClick <| Select (i, j), class "county"] ++ (buttonClasses model i j) ++ [terrainClass model i j]) hp
+
+getMaxLength model = 
+  model.mapInfo 
+  |> Dict.keys
+  |> List.map first
+  |> List.maximum
+  |> Maybe.withDefault 0
 
 showSoldier ((x,y), soldier) = 
   ul [] [
@@ -128,7 +150,7 @@ showSoldier ((x,y), soldier) =
   ]
 
 view model = div [] [
-  createTable 10 (individualButton model),
+  createTable (getMaxLength model) (individualButton model),
   text (showSelection model.selection),
   br [] [],
   button [onClick SendCommand] [text "Send command"],

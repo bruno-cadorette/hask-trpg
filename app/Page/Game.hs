@@ -14,12 +14,18 @@ pageTemplate title pageBody = doctypehtml_ (headTemplate title <> body_ pageBody
 
 css = style_ (".county {\
         \    border: solid;\
-        \    height: 40px;\
-        \    width: 40px;\
+        \    height: 60px;\
+        \    width: 60px;\
         \}\
         \\
-        \.player {\
-        \    background-color: lime\
+        \.grass {\
+        \   background-color: green\
+        \}\
+        \.water {\
+        \   background-color: blue\
+        \}\
+        \.wall {\
+        \   background-color: gray\
         \}\
         \table { border-collapse: collapse; }\
 
@@ -28,6 +34,11 @@ css = style_ (".county {\
         \    background-color: cornflowerblue\
         \}\
         \\
+        \.player {\
+
+        \  background-size:contain; \
+        \    background: url('static/assets/knight.png')\
+        \}\
         \.selected {\
         \    background-color: red\
         \}\

@@ -8,13 +8,14 @@ import Data.Bifunctor
 import PlayerManagement
 import Game.Logic
 import Soldier
+import TileMap.Environment
 import Data.List.NonEmpty as NonEmpty
 
 -- This module, sadly, does not use any cool deep learning framework
 
-generateMove :: PlayerId -> Map RegionId SoldierUnit -> Maybe PlayerInput
+generateMove :: PlayerId -> Map RegionId CharacterUnit -> Maybe PlayerInput
 generateMove player = 
-    fmap (NonEmpty.head) . nonEmpty . uncurry findMoves . bimap Map.keys Map.keys . Map.partition (\x -> player == x^.faction)
+    fmap (NonEmpty.head) . nonEmpty . uncurry findMoves . bimap Map.keys Map.keys . Map.partition (\x -> player == faction x)
 
 findMoves :: [RegionId] -> [RegionId] -> [PlayerInput]
 findMoves aiMap enemies = fmap (\aiUnit -> PlayerInput Movement aiUnit (findDirection aiUnit $ findClosest aiUnit enemies)) aiMap

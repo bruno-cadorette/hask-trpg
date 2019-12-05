@@ -30,6 +30,7 @@ import Servant.Checked.Exceptions
 import Network.HTTP.Types.Status
 import Debug.Trace
 import qualified Control.Monad.State.Lazy as Mtl
+import TileMap.Environment
 
 
 type GameHub = TVar (Map GameId (TVar Game))

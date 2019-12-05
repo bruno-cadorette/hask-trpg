@@ -1,10 +1,9 @@
-name:                risky
+name:                hask-trpg
 version:             0.1.0.0
-github:              "githubuser/risky"
+github:              "bruno-cadorette/hask-trpg"
 license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2019 Author name here"
+author:              "Bruno Cadorette"
+copyright:           "2019 Bruno Cadorette"
 
 extra-source-files:
 - README.md
@@ -17,7 +16,7 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/githubuser/risky#readme>
+description:         Please see the README on GitHub at <https://github.com/bruno-cadorette/hask-trpg#readme>
 
 dependencies:
 - base >= 4.7 && < 5
@@ -40,6 +39,8 @@ dependencies:
 - servant-foreign
 - servant-auth-server
 - hspec
+- gdp
+- range  >= 0.3.0.2
 
 library:
   source-dirs: src 
@@ -49,11 +50,11 @@ library:
   - -fspecialise-aggressively
 
 executables:
-  risky-exe:
+  hask-trpg-exe:
     main:                Main.hs
     source-dirs:         app
     dependencies:
-    - risky
+    - hask-trpg
     ghc-options: 
     - -O2 
     - -flate-specialise 
@@ -69,7 +70,7 @@ executables:
     - TypeOperators
 
 tests:
-  risky-test:
+  hask-trpg-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -78,4 +79,4 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - QuickCheck
-    - risky
+    - hask-trpg

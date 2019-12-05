@@ -54,6 +54,7 @@ import ServerHandler
 import Debug.Trace
 import Ai
 import Data.Coerce
+import TileMap.Environment
 
 
 instance ToJWT PlayerId

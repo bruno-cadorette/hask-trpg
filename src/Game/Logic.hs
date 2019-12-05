@@ -23,6 +23,7 @@ import Control.Monad
 import Data.Coerce
 import Soldier
 import Debug.Trace
+import TileMap.Environment
 
 data PlayerInputType = Movement | Attack  deriving(Generic, Show)
 data PlayerInput = PlayerInput { _inputType :: PlayerInputType, _origin :: RegionId, _destination :: RegionId } deriving (Generic, Show)
@@ -33,37 +34,37 @@ instance ToJSON PlayerInputType
 instance FromJSON PlayerInput
 instance ToJSON PlayerInput
  
-getPlayerUnit :: Members '[ReadMapInfo, CurrentPlayerInfo, Error PlayerMoveInputError] r => RegionId -> Sem r TargetSoldier
+getPlayerUnit :: Members '[ReadMapInfo, CurrentPlayerInfo, Error PlayerMoveInputError] r => RegionId -> Sem r TargetedCharacter
 getPlayerUnit regionId = do
     unit <- getUnit regionId
     playerId <- getCurrentPlayerId
     case unit of 
         Right x
-          | (soldier x)^.faction == playerId -> pure x
+          | faction x == playerId -> pure x
         _ -> throw (NotPlayerOwned regionId)
 
-isSoldierMovingTooMuch :: (Region a, Region b, Soldier a) => a -> b -> Bool
+isSoldierMovingTooMuch :: (Region a, Region b, Character a) => a -> b -> Bool
 isSoldierMovingTooMuch a b = 
-    distance (regionId a) (regionId b) > (soldier a)^.movement
+    distance (regionId a) (regionId b) > movement a
 
 
-isSoldierInRange :: (Soldier a, Region a, Region b) => a -> b -> Bool
+isSoldierInRange :: (Character a, Region a, Region b) => a -> b -> Bool
 isSoldierInRange a b = 
-    distance (regionId a) (regionId b) <= (soldier a)^.range
+    inRange (distance (regionId a) (regionId b)) a
 
-areAllies :: (Soldier a, Soldier b) => a -> b -> Bool
-areAllies s1 s2 = (soldier s1)^.faction == (soldier s2)^.faction 
+areAllies :: (Character a, Character b) => a -> b -> Bool
+areAllies s1 s2 = faction s1 == faction s2
 
-soldierMove :: Members '[Error PlayerMoveInputError, UnitAction] r => TargetSoldier -> EmptyRegion -> Sem r ()
+soldierMove :: Members '[Error PlayerMoveInputError, UnitAction] r => TargetedCharacter -> EmptyRegion -> Sem r ()
 soldierMove soldier emptyRegion 
     | isSoldierMovingTooMuch soldier emptyRegion = throw (MoveTooMuch $ regionId soldier )
     | otherwise = move soldier emptyRegion
 
-soldierAttack :: Members '[Error PlayerMoveInputError, UnitAction] r => TargetSoldier -> TargetSoldier -> Sem r ()
+soldierAttack :: Members '[Error PlayerMoveInputError, UnitAction] r => TargetedCharacter -> TargetedCharacter -> Sem r ()
 soldierAttack attacker defender
     | areAllies attacker defender = throw (AttackAllies (regionId attacker) (regionId defender))
     | not $ isSoldierInRange attacker defender = throw (AttackTooFar (regionId attacker) (regionId defender))
-    | otherwise = loseHP ((soldier attacker)^.attack) defender
+    | otherwise = loseHP (attack attacker) defender
 
 
 handlePlayerInput :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => PlayerInput -> Sem r ()

@@ -69,15 +69,12 @@ jsonEncSoldierUnit  val =
 
 
 type alias KeyNotFoundError k = k
-{-
-jsonDecKeyNotFoundError : Json.Decode.Decoder k -> Json.Decode.Decoder ( KeyNotFoundError k )
-jsonDecKeyNotFoundError localDecoder_k =
-    localDecoder_k
+
 
 jsonEncKeyNotFoundError : (k -> Value) -> KeyNotFoundError k -> Value
 jsonEncKeyNotFoundError localEncoder_k val = localEncoder_k val
 
--}
+
 
 type alias PlayerId  = Int
 
@@ -174,14 +171,33 @@ jsonEncUnitPositions  val = (Json.Encode.list (\(t1,t2) -> Json.Encode.list iden
 
 
 
-type alias Borders  = (List (RegionId, (List RegionId)))
+type TerrainType  =
+    Grass 
+    | Water 
+    | Wall 
+
+jsonDecTerrainType : Json.Decode.Decoder ( TerrainType )
+jsonDecTerrainType = 
+    let jsonDecDictTerrainType = Dict.fromList [("Grass", Grass), ("Water", Water), ("Wall", Wall)]
+    in  decodeSumUnaries "TerrainType" jsonDecDictTerrainType
+
+jsonEncTerrainType : TerrainType -> Value
+jsonEncTerrainType  val =
+    case val of
+        Grass -> Json.Encode.string "Grass"
+        Water -> Json.Encode.string "Water"
+        Wall -> Json.Encode.string "Wall"
+
+
+
+type alias Borders  = (List (RegionId, TerrainType))
 
 jsonDecBorders : Json.Decode.Decoder ( Borders )
 jsonDecBorders =
-    Json.Decode.list (Json.Decode.map2 tuple2 (Json.Decode.index 0 (jsonDecRegionId)) (Json.Decode.index 1 (Json.Decode.list (jsonDecRegionId))))
+    Json.Decode.list (Json.Decode.map2 tuple2 (Json.Decode.index 0 (jsonDecRegionId)) (Json.Decode.index 1 (jsonDecTerrainType)))
 
 jsonEncBorders : Borders -> Value
-jsonEncBorders  val = (Json.Encode.list (\(t1,t2) -> Json.Encode.list identity [(jsonEncRegionId) t1,((Json.Encode.list jsonEncRegionId)) t2])) val
+jsonEncBorders  val = (Json.Encode.list (\(t1,t2) -> Json.Encode.list identity [(jsonEncRegionId) t1,(jsonEncTerrainType) t2])) val
 
 
 getGame : (Result Http.Error  ((List GameId))  -> msg) -> Cmd msg

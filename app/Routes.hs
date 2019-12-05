@@ -20,6 +20,7 @@ import Lucid.Base
 import Game.Effects
 import Game.Logic
 import Region
+import TileMap.Environment
 import Soldier
 import Servant.Checked.Exceptions
 import PlayerManagement
@@ -78,25 +79,27 @@ type GameApi =
 
 deriveElmDef defaultOptions ''GameId
 deriveElmDef defaultOptions ''RegionId
-deriveElmDef defaultOptions ''SoldierUnit
+deriveElmDef defaultOptions ''CharacterUnit
 deriveElmDef defaultOptions ''KeyNotFoundError
 deriveElmDef defaultOptions ''PlayerId
 deriveElmDef defaultOptions ''PlayerInput
 deriveElmDef defaultOptions ''PlayerInputType
 deriveElmDef defaultOptions ''PlayerMoveInputError
 deriveElmDef defaultOptions ''UnitPositions
+deriveElmDef defaultOptions ''TerrainType
 deriveElmDef defaultOptions ''Borders
 
 elmTypes = [
     DefineElm (Proxy :: Proxy GameId), 
     DefineElm (Proxy :: Proxy RegionId), 
-    DefineElm (Proxy :: Proxy SoldierUnit), 
+    DefineElm (Proxy :: Proxy CharacterUnit), 
     DefineElm (Proxy :: Proxy (KeyNotFoundError a)), 
     DefineElm (Proxy :: Proxy PlayerId),
     DefineElm (Proxy :: Proxy PlayerInput),
     DefineElm (Proxy :: Proxy PlayerInputType),
     DefineElm (Proxy :: Proxy PlayerMoveInputError),
     DefineElm (Proxy :: Proxy UnitPositions),
+    DefineElm (Proxy :: Proxy TerrainType),
     DefineElm (Proxy :: Proxy Borders)]
 
 elm = 
