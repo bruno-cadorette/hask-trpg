@@ -7,7 +7,7 @@ import Data.Maybe
 import Data.Bifunctor
 import PlayerManagement
 import Game.Logic
-import Soldier
+import Character.Stats
 import TileMap.Environment
 import Data.List.NonEmpty as NonEmpty
 
@@ -15,7 +15,7 @@ import Data.List.NonEmpty as NonEmpty
 
 generateMove :: PlayerId -> Map RegionId CharacterUnit -> Maybe PlayerInput
 generateMove player = 
-    fmap (NonEmpty.head) . nonEmpty . uncurry findMoves . bimap Map.keys Map.keys . Map.partition (\x -> player == faction x)
+    fmap (NonEmpty.head) . nonEmpty . uncurry findMoves . bimap Map.keys Map.keys . Map.partition (\x -> player == getFaction x)
 
 findMoves :: [RegionId] -> [RegionId] -> [PlayerInput]
 findMoves aiMap enemies = fmap (\aiUnit -> PlayerInput Movement aiUnit (findDirection aiUnit $ findClosest aiUnit enemies)) aiMap

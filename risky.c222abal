@@ -1,0 +1,140 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 6b7148b394e7b0c1e2f8259b113e407dcdb49a47a1c7b6cd73a346729574876c
+
+name:           risky
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/risky#readme>
+homepage:       https://github.com/githubuser/risky#readme
+bug-reports:    https://github.com/githubuser/risky/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2019 Author name here
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/risky
+
+library
+  exposed-modules:
+      Ai
+      Game.Effects
+      Game.Logic
+      Game.TroopOrder
+      PlayerManagement
+      Region
+      Soldier
+  other-modules:
+      Paths_risky
+  hs-source-dirs:
+      src
+  ghc-options: -O2 -flate-specialise -fspecialise-aggressively
+  build-depends:
+      aeson
+    , array
+    , base >=4.7 && <5
+    , containers
+    , hspec
+    , http-types
+    , lens
+    , lucid
+    , mtl
+    , polysemy
+    , polysemy-plugin
+    , servant
+    , servant-auth-server
+    , servant-checked-exceptions
+    , servant-foreign
+    , servant-js
+    , servant-lucid
+    , servant-server
+    , stm
+    , warp
+    , text
+    , string-conversions
+    , range
+    , gdp
+  default-language: Haskell2010
+
+executable risky-exe
+  main-is: Main.hs
+  other-modules:
+      Page.Game
+      Routes
+      ServerHandler
+      Paths_risky
+  hs-source-dirs:
+      app
+  default-extensions: DataKinds FlexibleContexts LambdaCase PolyKinds RankNTypes ScopedTypeVariables TypeApplications TypeOperators
+  ghc-options: -O2 -flate-specialise -fspecialise-aggressively
+  build-depends:
+      aeson
+    , array
+    , base >=4.7 && <5
+    , containers
+    , hspec
+    , http-types
+    , lens
+    , lucid
+    , mtl
+    , polysemy >= 1.2.1.0
+    , polysemy-plugin
+    , risky
+    , servant
+    , servant-auth-server
+    , servant-checked-exceptions
+    , servant-foreign
+    , servant-js
+    , servant-lucid
+    , servant-server
+    , servant-elm
+    , stm
+    , warp
+    , text
+    , string-conversions
+    , range
+  default-language: Haskell2010
+
+test-suite risky-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_risky
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      QuickCheck
+    , aeson
+    , array
+    , base >=4.7 && <5
+    , containers
+    , hspec
+    , http-types
+    , lens
+    , lucid
+    , mtl
+    , polysemy
+    , polysemy-plugin
+    , risky
+    , servant
+    , servant-auth-server
+    , servant-checked-exceptions
+    , servant-foreign
+    , servant-js
+    , servant-lucid
+    , servant-server
+    , stm
+    , warp
+    , range
+  default-language: Haskell2010

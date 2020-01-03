@@ -21,7 +21,7 @@ import Game.Effects
 import Data.Foldable
 import Control.Monad
 import Data.Coerce
-import Soldier
+import Character.Stats
 import Debug.Trace
 import TileMap.Environment
 
@@ -40,31 +40,31 @@ getPlayerUnit regionId = do
     playerId <- getCurrentPlayerId
     case unit of 
         Right x
-          | faction x == playerId -> pure x
+          | getFaction x == playerId -> pure x
         _ -> throw (NotPlayerOwned regionId)
 
 isSoldierMovingTooMuch :: (Region a, Region b, Character a) => a -> b -> Bool
 isSoldierMovingTooMuch a b = 
-    distance (regionId a) (regionId b) > movement a
+    distance (regionId a) (regionId b) > getMovementRange a
 
 
 isSoldierInRange :: (Character a, Region a, Region b) => a -> b -> Bool
 isSoldierInRange a b = 
-    inRange (distance (regionId a) (regionId b)) a
+    distance (regionId a) (regionId b) > getAttackRange a
 
 areAllies :: (Character a, Character b) => a -> b -> Bool
-areAllies s1 s2 = faction s1 == faction s2
+areAllies s1 s2 = getFaction s1 == getFaction s2
 
 soldierMove :: Members '[Error PlayerMoveInputError, UnitAction] r => TargetedCharacter -> EmptyRegion -> Sem r ()
 soldierMove soldier emptyRegion 
     | isSoldierMovingTooMuch soldier emptyRegion = throw (MoveTooMuch $ regionId soldier )
-    | otherwise = move soldier emptyRegion
+    | otherwise = moveCharacter soldier emptyRegion
 
 soldierAttack :: Members '[Error PlayerMoveInputError, UnitAction] r => TargetedCharacter -> TargetedCharacter -> Sem r ()
 soldierAttack attacker defender
     | areAllies attacker defender = throw (AttackAllies (regionId attacker) (regionId defender))
     | not $ isSoldierInRange attacker defender = throw (AttackTooFar (regionId attacker) (regionId defender))
-    | otherwise = loseHP (attack attacker) defender
+    | otherwise = loseHP (getAttackDamage attacker) defender
 
 
 handlePlayerInput :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => PlayerInput -> Sem r ()

@@ -1,0 +1,142 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 4fc3054206dad152ef7d00d1330a3b07bf3f2f21bb5fe9ea8f8ddf013113810d
+
+name:           hask-trpg
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/bruno-cadorette/hask-trpg#readme>
+homepage:       https://github.com/bruno-cadorette/hask-trpg#readme
+bug-reports:    https://github.com/bruno-cadorette/hask-trpg/issues
+author:         Bruno Cadorette
+maintainer:     Bruno Cadorette
+copyright:      2019 Bruno Cadorette
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/bruno-cadorette/hask-trpg
+
+library
+  exposed-modules:
+      Ai
+      Character.Experimental
+      Character.Stats
+      Game.Effects
+      Game.Logic
+      Game.TroopOrder
+      PlayerManagement
+      Region
+      Soldier
+      TileMap.Environment
+      TileMap.Movement
+  other-modules:
+      Paths_hask_trpg
+  hs-source-dirs:
+      src
+  ghc-options: -O2 -flate-specialise -fspecialise-aggressively
+  build-depends:
+      aeson
+    , array
+    , base >=4.7 && <5
+    , containers
+    , gdp
+    , hspec
+    , http-types
+    , lens
+    , lucid
+    , mtl
+    , polysemy
+    , polysemy-plugin
+    , range >=0.3.0.2
+    , servant
+    , servant-auth-server
+    , servant-checked-exceptions
+    , servant-foreign
+    , servant-js
+    , servant-lucid
+    , servant-server
+    , servant-elm
+    , stm
+    , warp
+  default-language: Haskell2010
+
+executable hask-trpg-exe
+  main-is: Main.hs
+  other-modules:
+      Page.Game
+      Routes
+      ServerHandler
+      Paths_hask_trpg
+  hs-source-dirs:
+      app
+  default-extensions: DataKinds FlexibleContexts LambdaCase PolyKinds RankNTypes ScopedTypeVariables TypeApplications TypeOperators
+  ghc-options: -O2 -flate-specialise -fspecialise-aggressively
+  build-depends:
+      aeson
+    , array
+    , base >=4.7 && <5
+    , containers
+    , gdp
+    , hask-trpg
+    , hspec
+    , http-types
+    , lens
+    , lucid
+    , mtl
+    , polysemy
+    , polysemy-plugin
+    , range >=0.3.0.2
+    , servant
+    , servant-auth-server
+    , servant-checked-exceptions
+    , servant-foreign
+    , servant-js
+    , servant-lucid
+    , servant-server
+    , stm
+    , warp
+  default-language: Haskell2010
+
+test-suite hask-trpg-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_hask_trpg
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      QuickCheck
+    , aeson
+    , array
+    , base >=4.7 && <5
+    , containers
+    , gdp
+    , hask-trpg
+    , hspec
+    , http-types
+    , lens
+    , lucid
+    , mtl
+    , polysemy
+    , polysemy-plugin
+    , range >=0.3.0.2
+    , servant
+    , servant-auth-server
+    , servant-checked-exceptions
+    , servant-foreign
+    , servant-js
+    , servant-lucid
+    , servant-server
+    , stm
+    , warp
+  default-language: Haskell2010

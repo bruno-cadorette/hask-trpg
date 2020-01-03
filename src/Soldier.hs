@@ -102,22 +102,11 @@ affectStats str (Physical x) = Physical (fmap (+ str) x)
 applyBuff :: Buff -> Stats -> Stats
 applyBuff (BuffStrength i) stats = stats&strength^~i
 
-class Character a where
-    getAttackRange :: a -> DamageType (Range Int)
-    getCurrentHp :: a -> Int
-    inWeaponRange :: Int -> a -> Bool
-    getFaction :: a -> PlayerId
 
-instance Character CharacterUnit where
-    getAttackRange character = affectStats (totalStrength character) (view (weapon.weaponAttack) character)
-    getCurrentHp character = character^.characterHp.currentHp
-    inWeaponRange x character= inRange (character^.weapon.weaponRange) x 
-    getFaction character = character^.playerId
-
-hitCharacter :: DamageType Int -> CharacterUnit -> Maybe CharacterUnit
+hitCharacter :: Int -> CharacterUnit -> Maybe CharacterUnit
 hitCharacter damage character = 
-    let damage' = extract $ removeDefence damage (view (armor.defence) character) in
-    let newHp = affectCurrentHp (\x -> x - damage') (view characterHp character) in
+    --let damage' = extract $ removeDefence damage (view (armor.defence) character) in
+    let newHp = affectCurrentHp (\x -> x - damage) (view characterHp character) in
     if (newHp^.currentHp > 0) then
         Just (set characterHp newHp character)
     else

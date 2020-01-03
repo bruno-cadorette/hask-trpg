@@ -17,7 +17,7 @@ import Data.List
 import Data.Ord
 import Polysemy
 import Polysemy.State
-import Soldier
+import Character.Stats
 import Data.Coerce
 import Debug.Trace
 import TileMap.Environment
@@ -51,10 +51,11 @@ instance Region TargetedCharacter where
     regionId (TargetedCharacter r _) = r
 
 instance Character TargetedCharacter where
-    getAttackRange (TargetedCharacter _ c) = attack c
-    getCurrentHp (TargetedCharacter _ c) = hp c
-    getFaction (TargetedCharacter _ c) = faction c
-    inWeaponRange i (TargetedCharacter _ c) = inWeaponRange i c
+    getAttackRange (TargetedCharacter _ c) = getAttackRange c
+    getAttackDamage (TargetedCharacter _ c) = getAttackDamage c
+    getCurrentHp (TargetedCharacter _ c) = getCurrentHp c
+    getFaction (TargetedCharacter _ c) = getFaction c
+    getMovementRange (TargetedCharacter _ c) = getMovementRange c
         
 {-
 canWalk :: TargetSoldier k -> Maybe (TargetSoldier Walking)
@@ -78,7 +79,7 @@ soldierCanMove soldier region =
 data UnitAction m a where
     LoseHP :: Int -> TargetedCharacter -> UnitAction m () 
     --Move :: CanMoveTo movementType terrainType => TargetSoldier movementType -> EmptyRegion terrainType -> UnitAction m ()
-    Move :: TargetedCharacter -> EmptyRegion -> UnitAction m ()
+    MoveCharacter :: TargetedCharacter -> EmptyRegion -> UnitAction m ()
 
 makeSem ''UnitAction
 
@@ -92,7 +93,7 @@ modifyUnitPositions = modify . over unitPositions
 
 runUnitMoving ::Members '[State Game] r => InterpreterFor UnitAction r
 runUnitMoving = interpret $ \case
-    Move (TargetedCharacter orign playerToMove) (EmptyRegion destination _) -> do
+    MoveCharacter (TargetedCharacter orign playerToMove) (EmptyRegion destination _) -> do
         modifyUnitPositions (coerce (Data.Map.delete orign . Data.Map.insert destination playerToMove))
     LoseHP damage (TargetedCharacter location _) -> 
         modifyUnitPositions (coerce (Data.Map.update (hitCharacter damage) location))
