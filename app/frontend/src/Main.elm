@@ -11,6 +11,12 @@ import Platform.Cmd exposing (..)
 import List exposing (..)
 import Time exposing (..)
 
+--type Action = Move | Attack
+
+--type SelectionState  =
+--  NoSelection
+--  | SelectUnit Position
+--  | SelectAction Position Action
 
 gameId = 1
 
@@ -52,15 +58,15 @@ addSelection new selection =
     SelectTwo _ _ -> SelectNone
 
 type alias Model = {
-    selection : Selection GameApi.RegionId,
-    units : Dict.Dict GameApi.RegionId GameApi.SoldierUnit,
+    selection : Selection GameApi.Position,
+    units : Dict.Dict GameApi.Position GameApi.SoldierUnit,
     error : String
   }
 
 type Msg = 
-    Select GameApi.RegionId
-  | ReceiveUnits (Dict.Dict GameApi.RegionId GameApi.SoldierUnit)
-  | ReceiveMap (Dict.Dict GameApi.RegionId GameApi.TerrainType)
+    Select GameApi.Position
+  | ReceiveUnits (Dict.Dict GameApi.Position GameApi.SoldierUnit)
+  | ReceiveMap (Dict.Dict GameApi.Position GameApi.TerrainType)
   | SendReceiveUnitsCommand
   | SendCommand
   | ChangePlayerId String

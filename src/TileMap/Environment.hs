@@ -7,17 +7,18 @@ import Data.Map
 import Data.Aeson
 import GHC.Generics
 import Debug.Trace
+import Servant
 
 data TerrainType = Grass | Water | Wall deriving (Generic, Show)
 
 instance FromJSON TerrainType
 instance ToJSON TerrainType
 
-newtype RegionId = RegionId (Int, Int) deriving (Show, Eq, Ord, ToJSON, FromJSON, ToJSONKey, FromJSONKey)
+newtype Position = Position (Int, Int) deriving (Show, Eq, Ord, ToJSON, FromJSON, ToJSONKey, FromJSONKey)
 
-newtype Borders = Borders (Map RegionId TerrainType) deriving (FromJSON, ToJSON, Show, Semigroup, Monoid)
+newtype Borders = Borders (Map Position TerrainType) deriving (FromJSON, ToJSON, Show, Semigroup, Monoid)
 
-mkTileId x y = RegionId (x, y)
+mkTileId x y = Position (x, y)
 
 line x1 x2 y t = fmap (\x -> (mkTileId x y, t)) [x1..x2]
 column y1 y2 x t = fmap (\y -> (mkTileId x y, t)) [y1..y2]
@@ -30,3 +31,7 @@ grass :: Int -> Int -> Borders
 grass x y = Borders $ fromList $ square (0, 0) (x, y) Grass
 
 borders = water <> grass
+
+
+directNeighboor :: Position -> [Position]
+directNeighboor (Position (a,b)) = [Position (a + 1, b), Position (a - 1, b), Position (a, b + 1), Position (a, b - 1)]

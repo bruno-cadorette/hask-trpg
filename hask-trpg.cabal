@@ -37,7 +37,6 @@ library
       Region
       Soldier
       TileMap.Environment
-      TileMap.Movement
   other-modules:
       Paths_hask_trpg
   hs-source-dirs:

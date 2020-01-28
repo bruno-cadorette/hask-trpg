@@ -41,12 +41,14 @@ data CurrentPlayerInfo m a where
     GetCurrentPlayerId :: CurrentPlayerInfo m PlayerId
 
 data PlayerMoveInputError =
-    NotPlayerOwned RegionId |
-    RegionOccupied RegionId |
-    RegionNotOccupied RegionId |
-    AttackAllies RegionId RegionId | 
-    AttackTooFar RegionId RegionId |
-    MoveTooMuch RegionId 
+    NotPlayerOwned Position |
+    RegionOccupied Position |
+    RegionNotOccupied Position |
+    AttackAllies Position Position | 
+    AttackTooFar Position Position |
+    MoveTooMuch Position |
+    ExpectedEmpty Position |
+    ExpectedEnemy Position
     deriving (Show, Generic, Eq)
 
 instance FromJSON PlayerMoveInputError
@@ -64,9 +66,9 @@ instance ErrStatus (KeyNotFoundError k) where
     toErrStatus _ = notFound404 
 
 
-runCurrentPlayerInfo :: Members '[Reader PlayerId] r => InterpreterFor CurrentPlayerInfo r
-runCurrentPlayerInfo = interpret $ \case
-    GetCurrentPlayerId -> ask @PlayerId
+runCurrentPlayerInfo :: PlayerId -> InterpreterFor CurrentPlayerInfo r
+runCurrentPlayerInfo playerId = interpret $ \case
+    GetCurrentPlayerId -> return playerId
 
 lookupGame :: Members '[Reader GameHub, Embed STM, Error (KeyNotFoundError GameId)] r => GameId -> Sem r (TVar Game)
 lookupGame key = do

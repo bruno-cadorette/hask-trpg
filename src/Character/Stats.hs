@@ -13,7 +13,7 @@ import Control.Lens
 import GHC.Generics
 import Data.Aeson
 
-data Action = Move | Attack -- | Defend
+data Action = Move | Attack deriving (Show, Generic)
 
 --data Buff = IsDefending
 
@@ -25,7 +25,10 @@ data Action = Move | Attack -- | Defend
 --data Armor = Armor {_defence :: Int} deriving (Show, Generic)
 --makeLenses ''Armor
 
-data Hp = Hp {_currentHp :: Int, _maxHp :: Int} deriving (Show, Generic)
+data Hp = Hp {
+    _currentHp :: Int, 
+    _maxHp :: Int
+    } deriving (Show, Generic)
 makeLenses ''Hp
 instance FromJSON Hp
 instance ToJSON Hp

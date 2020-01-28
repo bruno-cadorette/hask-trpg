@@ -14,7 +14,6 @@ import Data.Foldable
 
 newtype PlayerId = PlayerId Integer deriving (Eq, Ord, Show, Ix, ToJSON, FromJSON, FromHttpApiData)
 
-type Action = Int
 newtype PlayerCache' a = PlayerCache' ()
 newtype PlayerCache a = PlayerCache (TArray PlayerId (Maybe a))
 

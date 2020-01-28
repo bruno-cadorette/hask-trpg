@@ -24,10 +24,10 @@ import TileMap.Environment
 import Control.Applicative
 
 
-newtype UnitPositions = UnitPositions (Map RegionId CharacterUnit) deriving (FromJSON, ToJSON, Show)
+newtype UnitPositions = UnitPositions (Map Position CharacterUnit) deriving (FromJSON, ToJSON, Show)
 
 
---newtype UnitPositions = UnitPositions (Map RegionId SoldierUnit) deriving (FromJSON, ToJSON, Show)
+--newtype UnitPositions = UnitPositions (Map Position SoldierUnit) deriving (FromJSON, ToJSON, Show)
 
 data Game = Game { _gameBorders :: Borders, _turnNumber :: Int, _unitPositions :: UnitPositions} deriving (Show)
 
@@ -35,20 +35,20 @@ data Game = Game { _gameBorders :: Borders, _turnNumber :: Int, _unitPositions :
 makeLenses ''Game
 
 class Region a where
-    regionId :: a -> RegionId
+    getPosition :: a -> Position
 
-instance Region RegionId where
-    regionId = id
+instance Region Position where
+    getPosition = id
 
 instance Region EmptyRegion where
-    regionId (EmptyRegion regionId _) = regionId
+    getPosition (EmptyRegion position _) = position
 
-data EmptyRegion = EmptyRegion RegionId TerrainType deriving(Show)
+data EmptyRegion = EmptyRegion Position TerrainType deriving(Show)
 
-data TargetedCharacter = TargetedCharacter RegionId CharacterUnit
+data TargetedCharacter = TargetedCharacter Position CharacterUnit
 
 instance Region TargetedCharacter where
-    regionId (TargetedCharacter r _) = r
+    getPosition (TargetedCharacter r _) = r
 
 instance Character TargetedCharacter where
     getAttackRange (TargetedCharacter _ c) = getAttackRange c
@@ -84,7 +84,8 @@ data UnitAction m a where
 makeSem ''UnitAction
 
 data ReadMapInfo m a where
-    GetUnit :: RegionId -> ReadMapInfo m (Either EmptyRegion TargetedCharacter)
+    GetUnit :: Position -> ReadMapInfo m (Either EmptyRegion TargetedCharacter)
+    GetAllTiles :: ReadMapInfo m Borders
 
 makeSem ''ReadMapInfo
 
@@ -100,18 +101,31 @@ runUnitMoving = interpret $ \case
 
 
 runReadMapInfo :: Members '[State Game] r => InterpreterFor ReadMapInfo r
-runReadMapInfo = interpret $ \(GetUnit regionId) -> 
-    gets (
-        maybe (Left $ EmptyRegion regionId Grass) (Right . TargetedCharacter regionId). 
-        Data.Map.lookup regionId . 
-        coerce . 
-        view unitPositions)
-
+runReadMapInfo = interpret $ \case
+    (GetUnit regionId) -> 
+        gets (
+            maybe (Left $ EmptyRegion regionId Grass) (Right . TargetedCharacter regionId). 
+            Data.Map.lookup regionId . 
+            coerce . 
+            view unitPositions)
+    GetAllTiles -> gets _gameBorders
+    
 baseUnitPositions :: UnitPositions
-baseUnitPositions = UnitPositions $ fromList [(RegionId (2,2), strongKnight (PlayerId 1)), (RegionId (6,8), baseKnight (PlayerId 2)) ]
+baseUnitPositions = UnitPositions $ fromList [(Position (2,2), strongKnight (PlayerId 1)), (Position (6,8), baseKnight (PlayerId 2)) ]
  
-distance :: RegionId -> RegionId -> Int
-distance (RegionId (x1, y1)) (RegionId (x2,y2)) = abs (x2 - x1) + abs (y2 - y1) 
+distance :: Position -> Position -> Int
+distance (Position (x1, y1)) (Position (x2,y2)) = abs (x2 - x1) + abs (y2 - y1) 
 
-findClosest :: RegionId -> [RegionId] -> RegionId
+findClosest :: Position -> [Position] -> Position
 findClosest origin = minimumBy (comparing (distance origin))
+
+
+rangeFromPosition :: Position -> Int -> [Position]
+rangeFromPosition region n = findRegions region n []
+    where
+        findRegions :: Position -> Int -> [Position] -> [Position]
+        findRegions r 0 acc = acc
+        findRegions r n acc = 
+            concatMap (\x -> findRegions x (n - 1) (x : acc)) $ 
+            Data.List.filter (\x -> notElem x acc) $ 
+            directNeighboor r

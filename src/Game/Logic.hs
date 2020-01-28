@@ -12,6 +12,7 @@ import Region
 import Data.Maybe
 import PlayerManagement
 import Data.List
+import Data.Either
 import Control.Lens
 import Polysemy
 import Polysemy.Reader
@@ -25,52 +26,93 @@ import Character.Stats
 import Debug.Trace
 import TileMap.Environment
 
-data PlayerInputType = Movement | Attack  deriving(Generic, Show)
-data PlayerInput = PlayerInput { _inputType :: PlayerInputType, _origin :: RegionId, _destination :: RegionId } deriving (Generic, Show)
+data PlayerInput = PlayerInput { _inputType :: Action, _origin :: Position, _destination :: Position } deriving (Generic, Show)
 
-instance FromJSON PlayerInputType
-instance ToJSON PlayerInputType
+instance FromJSON Action
+instance ToJSON Action
 
 instance FromJSON PlayerInput
 instance ToJSON PlayerInput
  
-getPlayerUnit :: Members '[ReadMapInfo, CurrentPlayerInfo, Error PlayerMoveInputError] r => RegionId -> Sem r TargetedCharacter
-getPlayerUnit regionId = do
-    unit <- getUnit regionId
+getPlayerUnit :: Members '[ReadMapInfo, CurrentPlayerInfo, Error PlayerMoveInputError] r => Position -> Sem r TargetedCharacter
+getPlayerUnit position = do
+    unit <- getUnit position
     playerId <- getCurrentPlayerId
     case unit of 
         Right x
           | getFaction x == playerId -> pure x
-        _ -> throw (NotPlayerOwned regionId)
+        _ -> throw (NotPlayerOwned position)
+
+getEmptyRegion :: Members '[ReadMapInfo, Error PlayerMoveInputError] r => Position -> Sem r EmptyRegion
+getEmptyRegion position = do
+    unit <- getUnit position
+    case unit of
+        Left x -> pure x
+        _ -> throw (ExpectedEmpty position)
+        
+getEnemyRegion :: Members '[ReadMapInfo, CurrentPlayerInfo, Error PlayerMoveInputError] r => Position -> Sem r TargetedCharacter
+getEnemyRegion position = do
+    unit <- getUnit position
+    playerId <- getCurrentPlayerId
+    case unit of 
+        Right x
+          | getFaction x /= playerId -> pure x
+        _ -> throw (ExpectedEnemy position)
 
 isSoldierMovingTooMuch :: (Region a, Region b, Character a) => a -> b -> Bool
 isSoldierMovingTooMuch a b = 
-    distance (regionId a) (regionId b) > getMovementRange a
+    distance (getPosition a) (getPosition b) > getMovementRange a
 
 
 isSoldierInRange :: (Character a, Region a, Region b) => a -> b -> Bool
 isSoldierInRange a b = 
-    distance (regionId a) (regionId b) > getAttackRange a
+    distance (getPosition a) (getPosition b) > getAttackRange a
 
 areAllies :: (Character a, Character b) => a -> b -> Bool
 areAllies s1 s2 = getFaction s1 == getFaction s2
 
 soldierMove :: Members '[Error PlayerMoveInputError, UnitAction] r => TargetedCharacter -> EmptyRegion -> Sem r ()
 soldierMove soldier emptyRegion 
-    | isSoldierMovingTooMuch soldier emptyRegion = throw (MoveTooMuch $ regionId soldier )
+    | isSoldierMovingTooMuch soldier emptyRegion = throw (MoveTooMuch $ getPosition soldier )
     | otherwise = moveCharacter soldier emptyRegion
 
 soldierAttack :: Members '[Error PlayerMoveInputError, UnitAction] r => TargetedCharacter -> TargetedCharacter -> Sem r ()
 soldierAttack attacker defender
-    | areAllies attacker defender = throw (AttackAllies (regionId attacker) (regionId defender))
-    | not $ isSoldierInRange attacker defender = throw (AttackTooFar (regionId attacker) (regionId defender))
+    | areAllies attacker defender = throw (AttackAllies (getPosition attacker) (getPosition defender))
+    | not $ isSoldierInRange attacker defender = throw (AttackTooFar (getPosition attacker) (getPosition defender))
     | otherwise = loseHP (getAttackDamage attacker) defender
 
 
+
 handlePlayerInput :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => PlayerInput -> Sem r ()
-handlePlayerInput (PlayerInput inputType origin destination) = do
-    playerUnit <- traceShow origin $ getPlayerUnit origin
-    targetRegion <- traceShow destination $ getUnit destination
-    case targetRegion of
-        Right soldier -> soldierAttack playerUnit soldier
-        Left emptyRegion -> soldierMove playerUnit emptyRegion
+handlePlayerInput (PlayerInput inputType origin destination) = undefined
+
+handlePlayerInput' :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => Position -> Action -> Position -> Sem r ()
+handlePlayerInput' origin inputType destination  = do
+    playerUnit <- getPlayerUnit origin
+    case inputType of
+        Move -> do
+            targetRegion <- getEmptyRegion destination
+            soldierMove playerUnit targetRegion
+        Attack -> do
+            targetRegion <- getEnemyRegion destination
+            soldierAttack playerUnit targetRegion
+
+
+possibleMoves :: Member ReadMapInfo r => TargetedCharacter -> Sem r [Position]
+possibleMoves character = do
+    filterM (fmap isLeft . getUnit) $ rangeFromPosition (getPosition character) (getMovementRange character)
+     
+possibleAttacks :: Member ReadMapInfo r => TargetedCharacter -> Sem r [Position]
+possibleAttacks character = 
+    filterM (fmap keepRegion . getUnit) $ rangeFromPosition (getPosition character) (getAttackRange character)
+    where 
+        keepRegion (Right otherChar) = not $ areAllies character otherChar
+        keepRegion _ = False
+
+findActionRange Move = possibleMoves
+findActionRange Attack = possibleAttacks
+
+getActionRanges characterPosition action = do
+    playerUnit <- getPlayerUnit characterPosition
+    findActionRange action playerUnit

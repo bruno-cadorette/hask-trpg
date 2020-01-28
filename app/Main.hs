@@ -33,6 +33,7 @@ import Data.Aeson
 import Control.Concurrent.STM.TVar
 import Control.Concurrent.STM
 import Region
+import Game.Logic
 import Game.Effects
 import Page.Game
 import Lucid.Base
@@ -48,6 +49,7 @@ import Polysemy.Reader
 import Control.Monad.IO.Class
 import Servant.Checked.Exceptions
 import Data.Either
+import Character.Stats
 import Control.Monad
 import Servant.Auth.Server
 import ServerHandler
@@ -55,7 +57,7 @@ import Debug.Trace
 import Ai
 import Data.Coerce
 import TileMap.Environment
-
+import Data.Bitraversable
 
 instance ToJWT PlayerId
 instance FromJWT PlayerId
@@ -95,18 +97,21 @@ updateAi = runStateAsReaderTVar $ runErrors $ runPlayerActions $ do
         Just g -> 
             runReader @PlayerId (PlayerId 2) $ runCurrentPlayerInfo $ handlePlayerInput g
         Nothing -> pure ()
--}
+
 updateGameMap :: PlayerId -> PlayerInput -> GameMonad (Envelope '[PlayerMoveInputError] ())
 updateGameMap playerId moves = 
     runStateAsReaderTVar $ runErrors $ runPlayerActions $ runReader @PlayerId playerId $ runCurrentPlayerInfo $ handlePlayerInput moves
+-}
 
-gameApi gameId = (getGameState :<|> updateGameMap) :<|> mapBorders
+
+gameApi :: Members '[ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => ServerT SingleGameApi (Sem r)
+gameApi playerId gameId = hoistServer (Proxy :: Proxy ActionApi) (runCurrentPlayerInfo playerId) actionHandlers :<|> getAllTiles
 
 
-riskyApi :: ServerT FullApi GameMonad
-riskyApi = (pure game) :<|> serveStaticFiles :<|> getGameIds :<|> gameApi  
+--riskyApi :: ServerT FullApi GameMonad
+--riskyApi = (pure game) :<|> serveStaticFiles :<|> getGameIds :<|> gameApi  
 
-riskyServer region = hoistServer (Proxy :: Proxy FullApi) (trace "hoist" $! gameMonadToHandler region) riskyApi
+riskyServer game = hoistServer (Proxy :: Proxy SingleGameApi) (gameMonadToHandler game) gameApi
 
 writeJSFiles :: IO ()
 writeJSFiles = writeJSForAPI (Proxy :: Proxy GameApi) vanillaJS "/home/bruno/git/risky/app/static/api.js"
@@ -119,11 +124,19 @@ serveStaticFiles = serveDirectoryWebApp "/home/bruno/git/risky/app/static"
 
 initGame = Game (borders 15 15) 0 baseUnitPositions
 
-gameMonadToHandler :: TVar Game -> GameMonad a -> Handler a
-gameMonadToHandler game r = liftIO $ atomically  $ runM $ runReader game r 
+unsafeRunError = fmap (fromRight undefined) . runError
+
+gameMonadToHandler :: TVar Game -> Sem '[ReadMapInfo, UnitAction, Error PlayerMoveInputError, State Game, Embed STM] a -> Handler a
+gameMonadToHandler game r = liftIO $ atomically  $ runM $ runReader game $ runStateAsReaderTVar $ unsafeRunError $ runPlayerActions r
 
 
-app region = serve (Proxy :: Proxy FullApi) (riskyServer region)
+getActions characterPosition = 
+    return [Move, Attack]
+
+actionHandlers :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => ServerT ActionApi (Sem r)
+actionHandlers = \p -> (getActions p :<|> (\a -> (getActionRanges p a :<|> handlePlayerInput' p a)))
+
+app region = serve (Proxy :: Proxy SingleGameApi) (riskyServer region)
 
 main :: IO ()
 main = do

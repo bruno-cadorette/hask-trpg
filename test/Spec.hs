@@ -40,7 +40,7 @@ main :: IO ()
 main = do
     let playerId = PlayerId 1
     let otherPlayerId = PlayerId 2
-    let homeRegion = RegionId (0,0)
+    let homeRegion = Position (0,0)
 
     hspec $ do
         describe "Region ownership" $ do      
@@ -63,21 +63,21 @@ main = do
         describe "Soldier moving" $ do
             it "Soldier can move to an unoccupied region" $ do
                 let gameMap = fromList [(homeRegion, baseSoldier playerId)]
-                (testFunctionResult gameMap playerId $ soldierMove homeRegion (RegionId (0, 1))) `shouldBe` Right ()
+                (testFunctionResult gameMap playerId $ soldierMove homeRegion (Position (0, 1))) `shouldBe` Right ()
 
             it "Soldier can't move farther than their limits" $ do
                 let gameMap = fromList [(homeRegion, baseSoldier playerId)]
-                (testFunctionResult gameMap playerId $ soldierMove homeRegion (RegionId (2, 1))) `shouldBe` Left (MoveTooMuch homeRegion)
+                (testFunctionResult gameMap playerId $ soldierMove homeRegion (Position (2, 1))) `shouldBe` Left (MoveTooMuch homeRegion)
 
         describe "Soldier hitting" $ do
 
             it "Soldier can't hit empty region" $ do
-                let enemyRegion = RegionId (2, 1)
+                let enemyRegion = Position (2, 1)
                 let gameMap = fromList [(homeRegion, baseSoldier playerId)]
                 (testFunctionResult gameMap playerId $ soldierAttack homeRegion enemyRegion) `shouldBe` Left (RegionNotOccupied enemyRegion)
             
             it "Soldier who gets hit lose the amount of hp of the attacker attack stat" $ do
-                let enemyRegion = RegionId (0, 1)
+                let enemyRegion = Position (0, 1)
                 let attackerAttack = 3
                 let defenderHp = 5
                 let gameMap = fromList [(homeRegion, (baseSoldier playerId)&attack.~attackerAttack), (enemyRegion, (baseSoldier otherPlayerId)&hp.~defenderHp)]
@@ -85,7 +85,7 @@ main = do
                 fmap (preview $ at enemyRegion._Just.hp) newMap `shouldBe` Right (Just (defenderHp - attackerAttack))
 
             it "Soldier who gets hit too hard die" $ do
-                let enemyRegion = RegionId (0, 1)
+                let enemyRegion = Position (0, 1)
                 let attackerAttack = 100
                 let defenderHp = 5
                 let gameMap = fromList [(homeRegion, (baseSoldier playerId)&attack.~attackerAttack), (enemyRegion, (baseSoldier otherPlayerId)&hp.~defenderHp)]
