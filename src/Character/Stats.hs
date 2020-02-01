@@ -13,7 +13,9 @@ import Control.Lens
 import GHC.Generics
 import Data.Aeson
 
-data Action = Move | Attack deriving (Show, Generic)
+data Action = Move | Sword | Bow deriving (Show, Generic)
+instance FromJSON Action
+instance ToJSON Action
 
 --data Buff = IsDefending
 
@@ -43,8 +45,9 @@ instance ToJSON Stats
 
 data CharacterUnit = CharacterUnit {
     _characterHp :: Hp, 
-    _stats :: Stats, 
+--    _stats :: Stats, 
     _damage :: Int,
+    _actions :: [Action],
     --_weapon :: Weapon, 
     --_armor :: Armor, 
     --_buffs :: [Buff], 
@@ -58,10 +61,12 @@ instance ToJSON CharacterUnit
 
 class Character a where
     getAttackRange :: a -> Int
+    getMovementRange :: a -> Int
+    --getActionRange :: a -> Action -> Int
     getAttackDamage :: a -> Int
     getCurrentHp :: a -> Int
-    getMovementRange :: a -> Int
     getFaction :: a -> PlayerId
+    getActions :: a ->  [Action]
 
 instance Character CharacterUnit where
     getAttackRange a = 1
@@ -69,8 +74,9 @@ instance Character CharacterUnit where
     getCurrentHp a = a ^.characterHp.currentHp
     getMovementRange a = 2
     getFaction a = a^.playerId
+    getActions a = a^.actions
 
-baseKnight = CharacterUnit (Hp 10 10) (Stats 1 1 1 1) 2
+baseKnight = CharacterUnit (Hp 10 10) 2 []
 strongKnight = baseKnight
 
 

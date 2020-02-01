@@ -56,6 +56,7 @@ instance Character TargetedCharacter where
     getCurrentHp (TargetedCharacter _ c) = getCurrentHp c
     getFaction (TargetedCharacter _ c) = getFaction c
     getMovementRange (TargetedCharacter _ c) = getMovementRange c
+    getActions (TargetedCharacter _ c) = getActions c
         
 {-
 canWalk :: TargetSoldier k -> Maybe (TargetSoldier Walking)

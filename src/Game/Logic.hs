@@ -25,14 +25,6 @@ import Data.Coerce
 import Character.Stats
 import Debug.Trace
 import TileMap.Environment
-
-data PlayerInput = PlayerInput { _inputType :: Action, _origin :: Position, _destination :: Position } deriving (Generic, Show)
-
-instance FromJSON Action
-instance ToJSON Action
-
-instance FromJSON PlayerInput
-instance ToJSON PlayerInput
  
 getPlayerUnit :: Members '[ReadMapInfo, CurrentPlayerInfo, Error PlayerMoveInputError] r => Position -> Sem r TargetedCharacter
 getPlayerUnit position = do
@@ -83,10 +75,6 @@ soldierAttack attacker defender
     | otherwise = loseHP (getAttackDamage attacker) defender
 
 
-
-handlePlayerInput :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => PlayerInput -> Sem r ()
-handlePlayerInput (PlayerInput inputType origin destination) = undefined
-
 handlePlayerInput' :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => Position -> Action -> Position -> Sem r ()
 handlePlayerInput' origin inputType destination  = do
     playerUnit <- getPlayerUnit origin
@@ -94,7 +82,7 @@ handlePlayerInput' origin inputType destination  = do
         Move -> do
             targetRegion <- getEmptyRegion destination
             soldierMove playerUnit targetRegion
-        Attack -> do
+        _ -> do
             targetRegion <- getEnemyRegion destination
             soldierAttack playerUnit targetRegion
 
@@ -111,8 +99,11 @@ possibleAttacks character =
         keepRegion _ = False
 
 findActionRange Move = possibleMoves
-findActionRange Attack = possibleAttacks
+findActionRange _ = possibleAttacks
 
 getActionRanges characterPosition action = do
     playerUnit <- getPlayerUnit characterPosition
     findActionRange action playerUnit
+
+getPossibleActions :: Members '[ReadMapInfo, CurrentPlayerInfo, Error PlayerMoveInputError] r => Position -> Sem r [Action]
+getPossibleActions = fmap getActions . getPlayerUnit

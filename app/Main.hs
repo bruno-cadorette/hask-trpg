@@ -130,11 +130,9 @@ gameMonadToHandler :: TVar Game -> Sem '[ReadMapInfo, UnitAction, Error PlayerMo
 gameMonadToHandler game r = liftIO $ atomically  $ runM $ runReader game $ runStateAsReaderTVar $ unsafeRunError $ runPlayerActions r
 
 
-getActions characterPosition = 
-    return [Move, Attack]
-
 actionHandlers :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => ServerT ActionApi (Sem r)
-actionHandlers = \p -> (getActions p :<|> (\a -> (getActionRanges p a :<|> handlePlayerInput' p a)))
+actionHandlers = \p -> (getPossibleActions p :<|> (\a -> (getActionRanges p a :<|> handlePlayerInput' p a)))
+
 
 app region = serve (Proxy :: Proxy SingleGameApi) (riskyServer region)
 
