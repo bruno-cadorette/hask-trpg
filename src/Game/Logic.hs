@@ -51,59 +51,37 @@ getEnemyRegion position = do
           | getFaction x /= playerId -> pure x
         _ -> throw (ExpectedEnemy position)
 
-isSoldierMovingTooMuch :: (Region a, Region b, Character a) => a -> b -> Bool
-isSoldierMovingTooMuch a b = 
-    distance (getPosition a) (getPosition b) > getMovementRange a
-
-
-isSoldierInRange :: (Character a, Region a, Region b) => a -> b -> Bool
-isSoldierInRange a b = 
-    distance (getPosition a) (getPosition b) > getAttackRange a
+isActionInRange :: (Region a, Region b) => a -> Action -> b -> Bool
+isActionInRange a action b = 
+        distance (getPosition a) (getPosition b) > range action
 
 areAllies :: (Character a, Character b) => a -> b -> Bool
 areAllies s1 s2 = getFaction s1 == getFaction s2
 
-soldierMove :: Members '[Error PlayerMoveInputError, UnitAction] r => TargetedCharacter -> EmptyRegion -> Sem r ()
-soldierMove soldier emptyRegion 
-    | isSoldierMovingTooMuch soldier emptyRegion = throw (MoveTooMuch $ getPosition soldier )
-    | otherwise = moveCharacter soldier emptyRegion
 
-soldierAttack :: Members '[Error PlayerMoveInputError, UnitAction] r => TargetedCharacter -> TargetedCharacter -> Sem r ()
-soldierAttack attacker defender
-    | areAllies attacker defender = throw (AttackAllies (getPosition attacker) (getPosition defender))
-    | not $ isSoldierInRange attacker defender = throw (AttackTooFar (getPosition attacker) (getPosition defender))
-    | otherwise = loseHP (getAttackDamage attacker) defender
-
-
-handlePlayerInput' :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => Position -> Action -> Position -> Sem r ()
-handlePlayerInput' origin inputType destination  = do
+handlePlayerInput' :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => Position -> ActionId -> Position -> Sem r ()
+handlePlayerInput' origin actionId destination  = do
     playerUnit <- getPlayerUnit origin
-    case inputType of
-        Move -> do
+    let action = getActionFromId actionId
+    when (not $ isActionInRange origin action destination) (throw (InvalidActionRange origin destination))
+    case action of
+        Move range -> do
             targetRegion <- getEmptyRegion destination
-            soldierMove playerUnit targetRegion
-        _ -> do
+            moveCharacter playerUnit targetRegion
+        Attack range damage -> do
             targetRegion <- getEnemyRegion destination
-            soldierAttack playerUnit targetRegion
+            loseHP damage targetRegion
 
+isActionValid action _ (Left _)     = mustBeOnEmptySpace action
+isActionValid action player (Right character)  
+    | areAllies character player    = mustBeOnAllySpace action
+    | otherwise                     = mustBeOnEnemySpace action
 
-possibleMoves :: Member ReadMapInfo r => TargetedCharacter -> Sem r [Position]
-possibleMoves character = do
-    filterM (fmap isLeft . getUnit) $ rangeFromPosition (getPosition character) (getMovementRange character)
-     
-possibleAttacks :: Member ReadMapInfo r => TargetedCharacter -> Sem r [Position]
-possibleAttacks character = 
-    filterM (fmap keepRegion . getUnit) $ rangeFromPosition (getPosition character) (getAttackRange character)
-    where 
-        keepRegion (Right otherChar) = not $ areAllies character otherChar
-        keepRegion _ = False
-
-findActionRange Move = possibleMoves
-findActionRange _ = possibleAttacks
-
-getActionRanges characterPosition action = do
-    playerUnit <- getPlayerUnit characterPosition
-    findActionRange action playerUnit
+getActionRange :: Members '[ReadMapInfo, CurrentPlayerInfo, Error PlayerMoveInputError] r => Position -> ActionId -> Sem r [Position]
+getActionRange position actionId = do
+    character <- getPlayerUnit position
+    let action = getActionFromId actionId
+    filterM (fmap (isActionValid action character) . getUnit) $ rangeFromPosition (getPosition character) (range action)
 
 getPossibleActions :: Members '[ReadMapInfo, CurrentPlayerInfo, Error PlayerMoveInputError] r => Position -> Sem r [Action]
 getPossibleActions = fmap getActions . getPlayerUnit

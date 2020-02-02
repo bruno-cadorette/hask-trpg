@@ -58,7 +58,7 @@ type GameManagement =
 type ActionApi = 
     ReqBody '[JSON] Position :> (
         Get '[JSON] [Action] :<|> 
-        ReqBody '[JSON] Action :> (
+        ReqBody '[JSON] ActionId :> (
             Get '[JSON] [Position] :<|>
             ReqBody '[JSON] Position :>
                 Post '[JSON] ()

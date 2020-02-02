@@ -131,7 +131,7 @@ gameMonadToHandler game r = liftIO $ atomically  $ runM $ runReader game $ runSt
 
 
 actionHandlers :: Members '[CurrentPlayerInfo, ReadMapInfo, Error PlayerMoveInputError, UnitAction] r => ServerT ActionApi (Sem r)
-actionHandlers = \p -> (getPossibleActions p :<|> (\a -> (getActionRanges p a :<|> handlePlayerInput' p a)))
+actionHandlers = \p -> (getPossibleActions p :<|> (\a -> (getActionRange p a :<|> handlePlayerInput' p a)))
 
 
 app region = serve (Proxy :: Proxy SingleGameApi) (riskyServer region)

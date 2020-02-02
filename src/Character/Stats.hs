@@ -13,7 +13,20 @@ import Control.Lens
 import GHC.Generics
 import Data.Aeson
 
-data Action = Move | Sword | Bow deriving (Show, Generic)
+newtype ActionId = ActionId Int deriving (Show, Generic)
+instance FromJSON ActionId
+instance ToJSON ActionId
+
+data Action = Move { range :: Int } | Attack {range :: Int, damage :: Int} deriving (Show, Generic)
+
+mustBeOnEmptySpace (Move _) = True
+mustBeOnEmptySpace (Attack _ _) = False
+
+mustBeOnEnemySpace (Move _) = False
+mustBeOnEnemySpace (Attack _ _) = True
+
+mustBeOnAllySpace _ = False
+
 instance FromJSON Action
 instance ToJSON Action
 
@@ -46,8 +59,8 @@ instance ToJSON Stats
 data CharacterUnit = CharacterUnit {
     _characterHp :: Hp, 
 --    _stats :: Stats, 
-    _damage :: Int,
-    _actions :: [Action],
+    --_damage :: Int,
+    _actions :: [(ActionId, Action)],
     --_weapon :: Weapon, 
     --_armor :: Armor, 
     --_buffs :: [Buff], 
@@ -61,24 +74,25 @@ instance ToJSON CharacterUnit
 
 class Character a where
     getAttackRange :: a -> Int
-    getMovementRange :: a -> Int
-    --getActionRange :: a -> Action -> Int
+    getAttackRange a = 1
     getAttackDamage :: a -> Int
+    getAttackDamage a = 1
+    getMovementRange :: a -> Int
+    getMovementRange a = 1
     getCurrentHp :: a -> Int
     getFaction :: a -> PlayerId
     getActions :: a ->  [Action]
 
 instance Character CharacterUnit where
-    getAttackRange a = 1
-    getAttackDamage a = a^.damage
     getCurrentHp a = a ^.characterHp.currentHp
-    getMovementRange a = 2
     getFaction a = a^.playerId
-    getActions a = a^.actions
+    getActions a = []--a^.actions
 
-baseKnight = CharacterUnit (Hp 10 10) 2 []
+baseKnight = CharacterUnit (Hp 10 10) []
 strongKnight = baseKnight
 
+getActionFromId (ActionId 0) = Move 1
+getActionFromId (ActionId 1) = Attack 1 1 
 
 
 hitCharacter :: Int -> CharacterUnit -> Maybe CharacterUnit

@@ -44,8 +44,7 @@ data PlayerMoveInputError =
     NotPlayerOwned Position |
     RegionOccupied Position |
     RegionNotOccupied Position |
-    AttackAllies Position Position | 
-    AttackTooFar Position Position |
+    InvalidActionRange Position Position |
     MoveTooMuch Position |
     ExpectedEmpty Position |
     ExpectedEnemy Position
