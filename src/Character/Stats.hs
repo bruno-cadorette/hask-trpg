@@ -16,13 +16,22 @@ import Data.Aeson
 newtype ActionId = ActionId Int deriving (Show, Generic)
 instance FromJSON ActionId
 instance ToJSON ActionId
+data MovementType = Walking | Flying | Teleport deriving (Show, Generic)
 
-data Action = Move { range :: Int } | Attack {range :: Int, damage :: Int} deriving (Show, Generic)
+instance FromJSON MovementType
+instance ToJSON MovementType
 
-mustBeOnEmptySpace (Move _) = True
+
+data Action = 
+    Move { range :: Int, movementType :: MovementType } | 
+    Attack { range :: Int, damage :: Int} |
+    AreaOfEffect { range :: Int, damage :: Int, affectRelativeTiles :: [(Int, Int)] } | 
+    Mine { damage :: Int } deriving (Show, Generic)
+
+mustBeOnEmptySpace (Move _ _) = True
 mustBeOnEmptySpace (Attack _ _) = False
 
-mustBeOnEnemySpace (Move _) = False
+mustBeOnEnemySpace (Move _ _)  = False
 mustBeOnEnemySpace (Attack _ _) = True
 
 mustBeOnAllySpace _ = False
@@ -91,7 +100,7 @@ instance Character CharacterUnit where
 baseKnight = CharacterUnit (Hp 10 10) []
 strongKnight = baseKnight
 
-getActionFromId (ActionId 0) = Move 1
+getActionFromId (ActionId 0) = Move 1 Walking
 getActionFromId (ActionId 1) = Attack 1 1 
 
 

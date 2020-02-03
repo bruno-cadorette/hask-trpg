@@ -20,6 +20,8 @@ newtype Borders = Borders (Map Position TerrainType) deriving (FromJSON, ToJSON,
 
 mkTileId x y = Position (x, y)
 
+movePosition (Position (a, b)) (x, y) = Position (a + x, b + y)
+
 line x1 x2 y t = fmap (\x -> (mkTileId x y, t)) [x1..x2]
 column y1 y2 x t = fmap (\y -> (mkTileId x y, t)) [y1..y2]
 square (x1, y1) (x2, y2) t = (\x y -> (mkTileId x y, t)) <$> [x1 .. x2] <*> [y1 .. y2]

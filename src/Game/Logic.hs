@@ -65,12 +65,16 @@ handlePlayerInput' origin actionId destination  = do
     let action = getActionFromId actionId
     when (not $ isActionInRange origin action destination) (throw (InvalidActionRange origin destination))
     case action of
-        Move range -> do
+        Move _ _ -> do
             targetRegion <- getEmptyRegion destination
             moveCharacter playerUnit targetRegion
-        Attack range damage -> do
+        Attack _ damage -> do
             targetRegion <- getEnemyRegion destination
             loseHP damage targetRegion
+        AreaOfEffect _ damage relativePositions -> do
+            let allPositions = destination : (fmap (movePosition destination) relativePositions)
+            affectedArea <- traverse getUnit allPositions
+            traverse_ (loseHP damage) $ rights affectedArea
 
 isActionValid action _ (Left _)     = mustBeOnEmptySpace action
 isActionValid action player (Right character)  
