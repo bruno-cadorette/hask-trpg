@@ -40,7 +40,8 @@ jsonEncRegionId  val = (\(t1,t2) -> Json.Encode.list identity [(Json.Encode.int)
 
 
 type alias SoldierUnit  =
-   { hp: Int
+   { soldierId: Int
+   , hp: Int
    , movement: Int
    , attack: Int
    , range: Int
@@ -49,7 +50,8 @@ type alias SoldierUnit  =
 
 jsonDecSoldierUnit : Json.Decode.Decoder ( SoldierUnit )
 jsonDecSoldierUnit =
-   Json.Decode.succeed (\p_hp p_movement p_attack p_range p_faction -> {hp = p_hp, movement = p_movement, attack = p_attack, range = p_range, faction = p_faction})
+   Json.Decode.succeed (\p_soldierId p_hp p_movement p_attack p_range p_faction -> {soldierId = p_soldierId, hp = p_hp, movement = p_movement, attack = p_attack, range = p_range, faction = p_faction})
+   |> required "_soldierId" (Json.Decode.int)
    |> required "_hp" (Json.Decode.int)
    |> required "_movement" (Json.Decode.int)
    |> required "_attack" (Json.Decode.int)
@@ -59,7 +61,8 @@ jsonDecSoldierUnit =
 jsonEncSoldierUnit : SoldierUnit -> Value
 jsonEncSoldierUnit  val =
    Json.Encode.object
-   [ ("_hp", Json.Encode.int val.hp)
+   [ ("_soldierId", Json.Encode.int val.soldierId)
+   , ("_hp", Json.Encode.int val.hp)
    , ("_movement", Json.Encode.int val.movement)
    , ("_attack", Json.Encode.int val.attack)
    , ("_range", Json.Encode.int val.range)

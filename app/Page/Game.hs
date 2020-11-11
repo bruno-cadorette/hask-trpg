@@ -14,8 +14,8 @@ pageTemplate title pageBody = doctypehtml_ (headTemplate title <> body_ pageBody
 
 css = style_ (".county {\
         \    border: solid;\
-        \    height: 40px;\
-        \    width: 40px;\
+        \    height: 60px;\
+        \    width: 60px;\
         \}\
         \\
         \.player {\
@@ -51,6 +51,8 @@ game = doctypehtml_ $ do
 
 gameImports :: Html()
 gameImports = do
+    link_ [rel_ "stylesheet", href_ "static/animations.css"]
+    link_ [rel_ "stylesheet", href_ "static/world.css"]
     script_ [src_ "static/main.js"] ""
 
 

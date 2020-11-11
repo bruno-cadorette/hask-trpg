@@ -14,8 +14,6 @@ import Data.Map
 import GHC.Generics
 import Control.Lens
 import Data.List
-import Data.Text
-import Data.Text.Read
 import Data.Ord
 import Polysemy
 import Polysemy.State
@@ -90,7 +88,7 @@ runReadMapInfo = interpret $ \(GetUnit regionId) ->
 
 
 baseUnitPositions :: UnitPositions
-baseUnitPositions = UnitPositions $ fromList [(RegionId (2,2), strongSoldier (PlayerId 1)), (RegionId (6,8), baseSoldier (PlayerId 2)) ]
+baseUnitPositions = UnitPositions $ fromList [(RegionId (2,2), strongSoldier 0 (PlayerId 1)), (RegionId (6,8), baseSoldier 1 (PlayerId 2)) ]
 
 allRegionRegionId f x y = do
     x' <- [0..x]

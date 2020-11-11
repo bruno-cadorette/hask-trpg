@@ -1,0 +1,64 @@
+.hero {
+  width: 40px;
+  height: 50px;
+  background: url('assets/link.png') 0 0 no-repeat;
+  background-color: transparent;
+  display: block;
+  margin: auto;
+  
+  
+}
+
+.enemy {
+  background: url('assets/knight.png');
+  background-size:cover;
+  width: 100%;
+  height: 100%;
+}
+.hero-idle{
+  background-position: -60px -60px;
+}
+.hero-walk-down {
+  animation: walkDown 1s steps(8) infinite
+}
+.hero-walk-up {
+  animation: walkUp 1s steps(8) infinite
+}
+.hero-walk-left {
+  animation: walkLeft 1s steps(6) infinite
+}
+.hero-walk-right {
+  animation: walkRight 1s steps(6) infinite
+}
+@keyframes walkDown {
+  from{
+    background-position-x: 0px;
+    background-position-y: -120px;}
+  to{
+    background-position-x: -455px;
+    background-position-y:-120px;}
+}
+@keyframes walkUp {
+  from{
+    background-position-x: 0px;
+    background-position-y: -290px;}
+  to{
+    background-position-x: -455px;
+    background-position-y:-290px;}
+}
+@keyframes walkLeft {
+  from{
+    background-position-x: -455px;
+    background-position-y: -120px;}
+  to{
+    background-position-x: -795px;
+    background-position-y:-120px;}
+}
+@keyframes walkRight {
+  from{
+    background-position-x: -455px;
+    background-position-y: -290px;}
+  to{
+    background-position-x: -795px;
+    background-position-y:-290px;}
+}

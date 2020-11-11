@@ -1,0 +1,28 @@
+
+.county {
+      border: solid;
+      height: 80px;
+      width: 80px;
+      background-color: lawngreen
+  }
+#game, .info {
+  margin-right: 15px;
+  float:left; 
+}
+.player {
+    background-color: lime
+}
+table { border-collapse: collapse; }
+
+tr, td { padding: 0; }
+.enemy {
+    background-color: cornflowerblue
+}
+
+.selected {
+    background-color: red
+}
+
+.inacessible {
+    filter: brightness(40%);
+}

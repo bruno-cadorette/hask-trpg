@@ -24,7 +24,7 @@ import Soldier
 import Servant.Checked.Exceptions
 import PlayerManagement
 import Servant.Foreign
-import Servant.Elm
+--import Servant.Elm
 import Servant.Auth.Server
 
 type FileApi = "static" :> Raw
@@ -75,7 +75,7 @@ type GameApi =
         )
     )
 
-
+{-
 deriveElmDef defaultOptions ''GameId
 deriveElmDef defaultOptions ''RegionId
 deriveElmDef defaultOptions ''SoldierUnit
@@ -106,3 +106,4 @@ elm =
         "GameApi"
         elmTypes
         (Proxy :: Proxy GameApi)
+-}

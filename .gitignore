@@ -1,5 +1,6 @@
 .stack-work/
 risky.cabal
 app/frontend/elm-stuff/
-app/static/
 *~
+app/frontend/main.js
+app/static/main.js

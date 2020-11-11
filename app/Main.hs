@@ -126,7 +126,7 @@ app region = serve (Proxy :: Proxy FullApi) (riskyServer region)
 
 main :: IO ()
 main = do
-    putStrLn "Start server"
+    putStrLn "Start server: http://localhost:8081"
     game <- newTVarIO initGame
     jwtConfig <- fmap defaultJWTSettings generateKey
     Network.Wai.Handler.Warp.run 8081 (app game)
