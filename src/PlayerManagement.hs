@@ -12,7 +12,7 @@ import Data.Bifunctor
 import Data.Foldable
 
 
-newtype PlayerId = PlayerId Integer deriving (Eq, Ord, Show, Ix, ToJSON, FromJSON, FromHttpApiData)
+newtype PlayerId = PlayerId Integer deriving (Eq, Ord, Show, Ix, FromHttpApiData)
 
 type Action = Int
 newtype PlayerCache' a = PlayerCache' ()

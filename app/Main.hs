@@ -95,15 +95,21 @@ updateAi = runStateAsReaderTVar $ runErrors $ runPlayerActions $ do
             runReader @PlayerId (PlayerId 2) $ runCurrentPlayerInfo $ handlePlayerInput g
         Nothing -> pure ()
 -}
+runEverything playerId = 
+  runStateAsReaderTVar . runErrors . runPlayerActions . runReader @PlayerId playerId . runCurrentPlayerInfo
+
 updateGameMap :: PlayerId -> PlayerInput -> GameMonad (Envelope '[PlayerMoveInputError] ())
 updateGameMap playerId moves = 
-    runStateAsReaderTVar $ runErrors $ runPlayerActions $ runReader @PlayerId playerId $ runCurrentPlayerInfo $ handlePlayerInput moves
+    runEverything playerId $ handlePlayerInput moves
 
-gameApi gameId = (getGameState :<|> updateGameMap) :<|> mapBorders
+getPossibleInputs' playerId  x y = runEverything playerId $ getPossibleInputs (RegionId (x, y))
+
+gameApi :: ServerT GameApi GameMonad
+gameApi = getGameState :<|> (\playerId -> runEverything playerId . handlePlayerInput) :<|>  getPossibleInputs' :<|> mapBorders
 
 
 riskyApi :: ServerT FullApi GameMonad
-riskyApi = (pure game) :<|> serveStaticFiles :<|> getGameIds :<|> gameApi  
+riskyApi = (pure game) :<|> serveStaticFiles :<|> gameApi  
 
 riskyServer region = hoistServer (Proxy :: Proxy FullApi) (trace "hoist" $! gameMonadToHandler region) riskyApi
 

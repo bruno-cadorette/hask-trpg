@@ -13,8 +13,6 @@ import Data.Aeson
 
 data SoldierUnit = SoldierUnit {_soldierId :: Int, _hp :: Int, _movement :: Int, _attack :: Int, _range :: Int, _faction :: PlayerId} deriving (Show, Generic)
 makeLenses ''SoldierUnit
-instance FromJSON SoldierUnit
-instance ToJSON SoldierUnit
 
 baseSoldier sid = SoldierUnit sid 5 2 1 1
 strongSoldier sid = SoldierUnit sid 6 2 2 1

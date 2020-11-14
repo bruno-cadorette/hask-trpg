@@ -24,8 +24,9 @@ import Soldier
 import Servant.Checked.Exceptions
 import PlayerManagement
 import Servant.Foreign
---import Servant.Elm
+import Servant.Elm
 import Servant.Auth.Server
+import qualified Elm.Derive as Elm
 
 type FileApi = "static" :> Raw
 
@@ -48,62 +49,42 @@ type PlayerAuthentication = Auth '[JWT] PlayerId
 type GameManagement =
     PlayerAuthentication :> ReqBody '[JSON] GameId :> Post '[JSON] Bool
 
-type FullApi' = 
-    PlayerAuthentication :>
-        "game" :> GameApi'
-        
-type GameApi' =
-    Get '[JSON] [GameId] :<|>
-    Capture "gameId" GameId :> Throws (KeyNotFoundError GameId) :> (
-        "gameState" :> (
-            Get '[JSON] UnitPositions :<|>
-            ReqBody '[JSON] PlayerInput :> Throws PlayerMoveInputError :> Post '[JSON] ()
-        ) :<|>
-        "borders" :> Get '[JSON] Borders
-    )
-        
+type CaptureCoordinate = Capture "x" Int :> Capture "y" Int
 
 type GameApi = 
-    "game" :> (
-        Get '[JSON] [GameId] :<|>
-        Capture "gameId" GameId :> (
-            "gameState" :> (
-                Get '[JSON] UnitPositions :<|>
-                Capture "playerId" PlayerId :> ReqBody '[JSON] PlayerInput :> Throws PlayerMoveInputError :> Post '[JSON] ()
-            ) :<|>
-            "borders" :> Get '[JSON] Borders
-        )
-    )
-
-{-
-deriveElmDef defaultOptions ''GameId
-deriveElmDef defaultOptions ''RegionId
-deriveElmDef defaultOptions ''SoldierUnit
-deriveElmDef defaultOptions ''KeyNotFoundError
-deriveElmDef defaultOptions ''PlayerId
-deriveElmDef defaultOptions ''PlayerInput
-deriveElmDef defaultOptions ''PlayerInputType
-deriveElmDef defaultOptions ''PlayerMoveInputError
-deriveElmDef defaultOptions ''UnitPositions
-deriveElmDef defaultOptions ''Borders
+  "unitpositions" :> Get '[JSON] UnitPositions :<|>
+  ("playeraction" :> Capture "playerId" PlayerId :> Throws PlayerMoveInputError :> ReqBody '[JSON] PlayerInput :> Post '[JSON] ()) :<|>
+  ("possibleactions" :> Capture "playerId" PlayerId :> Throws PlayerMoveInputError :> Capture "x" Int :> Capture "y" Int :> Get '[JSON] [PossibleInput]) :<|>
+  "borders" :> Get '[JSON] Borders
+    
+$(deriveBoth (Elm.defaultOptionsDropLower 1) ''SoldierUnit)
+$(deriveBoth (Elm.defaultOptionsDropLower 1) ''GameId)
+$(deriveBoth (Elm.defaultOptionsDropLower 1) ''RegionId)
+$(deriveBoth (Elm.defaultOptionsDropLower 1) ''KeyNotFoundError)
+$(deriveBoth (Elm.defaultOptionsDropLower 1) ''PlayerId)
+$(deriveBoth (Elm.defaultOptionsDropLower 1) ''PlayerInput)
+$(deriveBoth (Elm.defaultOptionsDropLower 1) ''PlayerInputType)
+$(deriveBoth (Elm.defaultOptionsDropLower 1) ''PlayerMoveInputError)
+$(deriveBoth (Elm.defaultOptionsDropLower 1) ''UnitPositions)
+$(deriveBoth (Elm.defaultOptionsDropLower 1) ''Borders)
+$(deriveBoth (Elm.defaultOptionsDropLower 1) ''PossibleInput)
 
 elmTypes = [
     DefineElm (Proxy :: Proxy GameId), 
     DefineElm (Proxy :: Proxy RegionId), 
     DefineElm (Proxy :: Proxy SoldierUnit), 
-    DefineElm (Proxy :: Proxy (KeyNotFoundError a)), 
     DefineElm (Proxy :: Proxy PlayerId),
     DefineElm (Proxy :: Proxy PlayerInput),
     DefineElm (Proxy :: Proxy PlayerInputType),
     DefineElm (Proxy :: Proxy PlayerMoveInputError),
     DefineElm (Proxy :: Proxy UnitPositions),
-    DefineElm (Proxy :: Proxy Borders)]
+    DefineElm (Proxy :: Proxy Borders),
+    DefineElm (Proxy :: Proxy PossibleInput)]
 
 elm = 
     generateElmModule
         ["GameApi"]
         defElmImports
-        "GameApi"
+        "app/frontend/src"
         elmTypes
         (Proxy :: Proxy GameApi)
--}

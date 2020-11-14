@@ -20,13 +20,22 @@ import Polysemy.State
 import Soldier
 import Data.Coerce
 import Debug.Trace
+import Servant
+import qualified Data.Text as Text
 
 
-newtype RegionId = RegionId (Int, Int) deriving (Show, Eq, Ord, ToJSON, FromJSON, ToJSONKey, FromJSONKey)
 
-newtype Borders = Borders (Map RegionId [RegionId]) deriving (FromJSON, ToJSON, Show)
+newtype RegionId = RegionId (Int, Int) deriving (Show, Eq, Ord, ToJSONKey, FromJSONKey)
 
-newtype UnitPositions = UnitPositions (Map RegionId SoldierUnit) deriving (FromJSON, ToJSON, Show)
+instance FromHttpApiData RegionId where
+  parseQueryParam txt = 
+    case Text.splitOn "_" txt of
+      [x, y] -> Right $ RegionId (read (Text.unpack x), read (Text.unpack y))
+      _ -> Left "Cannot parse RegionId"
+
+newtype Borders = Borders (Map RegionId [RegionId]) deriving (Show)
+
+newtype UnitPositions = UnitPositions (Map RegionId SoldierUnit) deriving (Show)
 
 data Game = Game { _gameBorders :: Borders, _turnNumber :: Int, _unitPositions :: UnitPositions} deriving (Show)
 
@@ -34,18 +43,18 @@ makeLenses ''Game
 
 
 
-newtype Army = Army Int deriving (Show, Eq, Ord, FromJSON, ToJSON, Num)
+newtype Army = Army Int deriving (Show, Eq, Ord, Num)
 class Region a where
-    regionId :: a -> RegionId
+    getRegionId :: a -> RegionId
 
 instance Region RegionId where
-    regionId = id
+    getRegionId = id
 
 instance Region EmptyRegion where
-    regionId (EmptyRegion regionId) = regionId
+    getRegionId (EmptyRegion regionId) = regionId
 
 instance Region TargetSoldier where
-    regionId (TargetSoldier regionId _) = regionId
+    getRegionId (TargetSoldier regionId _) = regionId
     
 
 instance Soldier TargetSoldier where
@@ -108,9 +117,13 @@ neighboor maxX maxY (x, y) = (mkRegionId x y , allNeighboor)
 distance :: RegionId -> RegionId -> Int
 distance (RegionId (x1, y1)) (RegionId (x2,y2)) = abs (x2 - x1) + abs (y2 - y1) 
 
+directNeighboor :: RegionId -> [RegionId]
+directNeighboor (RegionId (a,b)) = [RegionId (a + 1, b), RegionId (a - 1, b), RegionId (a, b + 1), RegionId (a, b - 1)]
 
 borders :: Int -> Int -> Borders
 borders x y = Borders $ fromList $ neighboor x y <$> allRegionRegionId (,) x y
 
 findClosest :: RegionId -> [RegionId] -> RegionId
 findClosest origin = minimumBy (comparing (distance origin))
+
+extendedNeighboor n r = tail $ nub $ concat $ Data.List.take n $ iterate (concatMap directNeighboor) [r]

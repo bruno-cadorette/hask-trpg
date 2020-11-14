@@ -12,9 +12,9 @@ import Platform.Cmd exposing (..)
 import List exposing (..)
 import Time exposing (..)
 import Debug
+import Move exposing (..)
 
 playerId = 1
-gameId = 1
 
 main =
   Browser.element 
@@ -25,7 +25,7 @@ main =
       subscriptions = always (Time.every 500 (\x -> SendReceiveUnitsCommand))
     }
 
-getGameState = GameApi.getGameByGameIdGameState gameId (handleError (Dict.fromList >> ReceiveUnits))
+getGameState = GameApi.getUnitpositions (handleError (Dict.fromList >> ReceiveUnits))
 type Selection a =
   SelectNone | SelectOne a | SelectTwo a a
 
@@ -57,14 +57,6 @@ type alias Model = {
     playerId : Int,
     isMoving : Bool
   }
-type Direction =
-    Up
-  | Down
-  | Left
-  | Right
-type MovementState = 
-    Idle
-  | Move Direction GameApi.RegionId
 
 type alias SoldierModel = {
     movementState : MovementState,
@@ -79,11 +71,7 @@ type Msg =
   | ChangePlayerId String
   | Error String
   | Success
-{-
-nouveaux objets mais avec les anciennes positions
 
-
--}
 receiveUnits : 
   Dict.Dict GameApi.RegionId GameApi.SoldierUnit -> 
   Dict.Dict GameApi.RegionId SoldierModel -> 
@@ -111,49 +99,7 @@ receiveUnits serverDict localDict =
                   (newPos, {movementState = Idle, soldierData = newData})
               Nothing -> (newPos, {movementState = Idle, soldierData = newData}))
     |> Dict.fromList
-    
-getDirection (oldY, oldX) (newY, newX) = 
-  if oldX < newX then
-    Right
-  else if oldX > newX then
-    Left
-  else if oldY < newY then
-    Down
-  else
-    Up
 
-immediateNextMove (curY, curX) goal = 
-  case getDirection (curY, curX) goal of
-     Right -> (curY, curX + 1)
-     Left -> (curY, curX - 1)
-     Down -> (curY + 1, curX)
-     Up -> (curY - 1, curX)
-
-nextMove current goal dict =
-  let next = immediateNextMove current goal
-  in
-    if current == goal then 
-      current
-    else if Dict.member next dict then
-      nextMove next goal dict
-    else
-      next
-
-find : (a -> Bool) -> List a -> Maybe a
-find f list =
-  case list of
-    (x::xs) -> if f x then Just x else find f xs
-    [] -> Nothing
-
-findNextToMove : Dict.Dict GameApi.RegionId SoldierModel -> Maybe.Maybe GameApi.RegionId
-findNextToMove dict =
-  dict 
-  |> Dict.toList 
-  |> find (\(currentPos, v) -> 
-      case v.movementState of
-          Move _ futurePos -> currentPos /= futurePos
-          _ -> False)
-  |> Maybe.map Tuple.first
 
 moveSoldier currentPos dict =
   case Dict.get currentPos dict of
@@ -166,6 +112,15 @@ moveSoldier currentPos dict =
             |> Dict.insert nextPos ({unit | movementState = if nextPos == goal then Idle else Move (getDirection nextPos goal) goal})
         Idle -> dict
     Nothing -> dict
+
+findNextToMove dict =
+  dict 
+  |> Dict.toList 
+  |> find (\(currentPos, v) -> 
+      case v.movementState of
+          Move _ futurePos -> currentPos /= futurePos
+          _ -> False)
+  |> Maybe.map Tuple.first
 
 handleError f result =
   case result of
@@ -197,8 +152,7 @@ update msg model =
         cmd =
           case model.selection of
             SelectTwo origin destination -> 
-              GameApi.postGameByGameIdGameStateByPlayerId 
-                gameId 
+              GameApi.postPlayeractionByPlayerId 
                 model.playerId
                 {origin = origin, destination = destination, inputType = GameApi.Movement}
                 (handleError (always Success))
@@ -225,16 +179,6 @@ createTable len f =
     row i = List.map (\j -> Html.td [] [f i j]) lst
   in Html.table [id "game"] <| List.map (\i -> Html.tr [] <| row i) lst
   
-movementClass : MovementState -> String
-movementClass movementState =
-  case movementState of
-    Idle -> "hero-idle"
-    Move direction _ ->
-      case direction of
-         Up -> "hero-walk-up"
-         Down -> "hero-walk-down"
-         Left -> "hero-walk-left"
-         Right -> "hero-walk-right"
 
 unitAnimation model i j = 
     let 

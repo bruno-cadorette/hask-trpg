@@ -40,6 +40,9 @@ dependencies:
 - servant-foreign
 - servant-auth-server
 - hspec
+- servant-elm
+- text
+- elm-bridge
 
 library:
   source-dirs: src 

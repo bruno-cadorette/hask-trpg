@@ -50,37 +50,26 @@ type alias SoldierUnit  =
 
 jsonDecSoldierUnit : Json.Decode.Decoder ( SoldierUnit )
 jsonDecSoldierUnit =
-   Json.Decode.succeed (\p_soldierId p_hp p_movement p_attack p_range p_faction -> {soldierId = p_soldierId, hp = p_hp, movement = p_movement, attack = p_attack, range = p_range, faction = p_faction})
-   |> required "_soldierId" (Json.Decode.int)
-   |> required "_hp" (Json.Decode.int)
-   |> required "_movement" (Json.Decode.int)
-   |> required "_attack" (Json.Decode.int)
-   |> required "_range" (Json.Decode.int)
-   |> required "_faction" (jsonDecPlayerId)
+   Json.Decode.succeed (\psoldierId php pmovement pattack prange pfaction -> {soldierId = psoldierId, hp = php, movement = pmovement, attack = pattack, range = prange, faction = pfaction})
+   |> required "soldierId" (Json.Decode.int)
+   |> required "hp" (Json.Decode.int)
+   |> required "movement" (Json.Decode.int)
+   |> required "attack" (Json.Decode.int)
+   |> required "range" (Json.Decode.int)
+   |> required "faction" (jsonDecPlayerId)
 
 jsonEncSoldierUnit : SoldierUnit -> Value
 jsonEncSoldierUnit  val =
    Json.Encode.object
-   [ ("_soldierId", Json.Encode.int val.soldierId)
-   , ("_hp", Json.Encode.int val.hp)
-   , ("_movement", Json.Encode.int val.movement)
-   , ("_attack", Json.Encode.int val.attack)
-   , ("_range", Json.Encode.int val.range)
-   , ("_faction", jsonEncPlayerId val.faction)
+   [ ("soldierId", Json.Encode.int val.soldierId)
+   , ("hp", Json.Encode.int val.hp)
+   , ("movement", Json.Encode.int val.movement)
+   , ("attack", Json.Encode.int val.attack)
+   , ("range", Json.Encode.int val.range)
+   , ("faction", jsonEncPlayerId val.faction)
    ]
 
 
-
-type alias KeyNotFoundError k = k
-{-
-jsonDecKeyNotFoundError : Json.Decode.Decoder k -> Json.Decode.Decoder ( KeyNotFoundError k )
-jsonDecKeyNotFoundError localDecoder_k =
-    localDecoder_k
-
-jsonEncKeyNotFoundError : (k -> Value) -> KeyNotFoundError k -> Value
-jsonEncKeyNotFoundError localEncoder_k val = localEncoder_k val
-
--}
 
 type alias PlayerId  = Int
 
@@ -101,17 +90,17 @@ type alias PlayerInput  =
 
 jsonDecPlayerInput : Json.Decode.Decoder ( PlayerInput )
 jsonDecPlayerInput =
-   Json.Decode.succeed (\p_inputType p_origin p_destination -> {inputType = p_inputType, origin = p_origin, destination = p_destination})
-   |> required "_inputType" (jsonDecPlayerInputType)
-   |> required "_origin" (jsonDecRegionId)
-   |> required "_destination" (jsonDecRegionId)
+   Json.Decode.succeed (\pinputType porigin pdestination -> {inputType = pinputType, origin = porigin, destination = pdestination})
+   |> required "inputType" (jsonDecPlayerInputType)
+   |> required "origin" (jsonDecRegionId)
+   |> required "destination" (jsonDecRegionId)
 
 jsonEncPlayerInput : PlayerInput -> Value
 jsonEncPlayerInput  val =
    Json.Encode.object
-   [ ("_inputType", jsonEncPlayerInputType val.inputType)
-   , ("_origin", jsonEncRegionId val.origin)
-   , ("_destination", jsonEncRegionId val.destination)
+   [ ("inputType", jsonEncPlayerInputType val.inputType)
+   , ("origin", jsonEncRegionId val.origin)
+   , ("destination", jsonEncRegionId val.destination)
    ]
 
 
@@ -187,36 +176,22 @@ jsonEncBorders : Borders -> Value
 jsonEncBorders  val = (Json.Encode.list (\(t1,t2) -> Json.Encode.list identity [(jsonEncRegionId) t1,((Json.Encode.list jsonEncRegionId)) t2])) val
 
 
-getGame : (Result Http.Error  ((List GameId))  -> msg) -> Cmd msg
-getGame toMsg =
-    let
-        params =
-            List.filterMap identity
-            (List.concat
-                [])
-    in
-        Http.request
-            { method =
-                "GET"
-            , headers =
-                []
-            , url =
-                Url.Builder.crossOrigin ""
-                    [ "game"
-                    ]
-                    params
-            , body =
-                Http.emptyBody
-            , expect =
-                Http.expectJson toMsg (Json.Decode.list (jsonDecGameId))
-            , timeout =
-                Nothing
-            , tracker =
-                Nothing
-            }
 
-getGameByGameIdGameState : GameId -> (Result Http.Error  (UnitPositions)  -> msg) -> Cmd msg
-getGameByGameIdGameState capture_gameId toMsg =
+type PossibleInput  =
+    PossibleInput PlayerInputType (List RegionId)
+
+jsonDecPossibleInput : Json.Decode.Decoder ( PossibleInput )
+jsonDecPossibleInput =
+    Json.Decode.lazy (\_ -> Json.Decode.map2 PossibleInput (Json.Decode.index 0 (jsonDecPlayerInputType)) (Json.Decode.index 1 (Json.Decode.list (jsonDecRegionId))))
+
+
+jsonEncPossibleInput : PossibleInput -> Value
+jsonEncPossibleInput (PossibleInput v1 v2) =
+    Json.Encode.list identity [jsonEncPlayerInputType v1, (Json.Encode.list jsonEncRegionId) v2]
+
+
+getUnitpositions : (Result Http.Error  (UnitPositions)  -> msg) -> Cmd msg
+getUnitpositions toMsg =
     let
         params =
             List.filterMap identity
@@ -230,9 +205,7 @@ getGameByGameIdGameState capture_gameId toMsg =
                 []
             , url =
                 Url.Builder.crossOrigin ""
-                    [ "game"
-                    , capture_gameId |> String.fromInt
-                    , "gameState"
+                    [ "unitpositions"
                     ]
                     params
             , body =
@@ -245,8 +218,8 @@ getGameByGameIdGameState capture_gameId toMsg =
                 Nothing
             }
 
-postGameByGameIdGameStateByPlayerId : GameId -> PlayerId -> PlayerInput -> (Result Http.Error  (())  -> msg) -> Cmd msg
-postGameByGameIdGameStateByPlayerId capture_gameId capture_playerId body toMsg =
+postPlayeractionByPlayerId : PlayerId -> PlayerInput -> (Result Http.Error  (())  -> msg) -> Cmd msg
+postPlayeractionByPlayerId capture_playerId body toMsg =
     let
         params =
             List.filterMap identity
@@ -260,9 +233,7 @@ postGameByGameIdGameStateByPlayerId capture_gameId capture_playerId body toMsg =
                 []
             , url =
                 Url.Builder.crossOrigin ""
-                    [ "game"
-                    , capture_gameId |> String.fromInt
-                    , "gameState"
+                    [ "playeraction"
                     , capture_playerId |> String.fromInt
                     ]
                     params
@@ -279,8 +250,8 @@ postGameByGameIdGameStateByPlayerId capture_gameId capture_playerId body toMsg =
                 Nothing
             }
 
-getGameByGameIdBorders : GameId -> (Result Http.Error  (Borders)  -> msg) -> Cmd msg
-getGameByGameIdBorders capture_gameId toMsg =
+getPossibleactionsByPlayerIdByXByY : PlayerId -> Int -> Int -> (Result Http.Error  ((List PossibleInput))  -> msg) -> Cmd msg
+getPossibleactionsByPlayerIdByXByY capture_playerId capture_x capture_y toMsg =
     let
         params =
             List.filterMap identity
@@ -294,9 +265,38 @@ getGameByGameIdBorders capture_gameId toMsg =
                 []
             , url =
                 Url.Builder.crossOrigin ""
-                    [ "game"
-                    , capture_gameId |> String.fromInt
-                    , "borders"
+                    [ "possibleactions"
+                    , capture_playerId |> String.fromInt
+                    , capture_x |> String.fromInt
+                    , capture_y |> String.fromInt
+                    ]
+                    params
+            , body =
+                Http.emptyBody
+            , expect =
+                Http.expectJson toMsg (Json.Decode.list (jsonDecPossibleInput))
+            , timeout =
+                Nothing
+            , tracker =
+                Nothing
+            }
+
+getBorders : (Result Http.Error  (Borders)  -> msg) -> Cmd msg
+getBorders toMsg =
+    let
+        params =
+            List.filterMap identity
+            (List.concat
+                [])
+    in
+        Http.request
+            { method =
+                "GET"
+            , headers =
+                []
+            , url =
+                Url.Builder.crossOrigin ""
+                    [ "borders"
                     ]
                     params
             , body =

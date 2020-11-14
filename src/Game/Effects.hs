@@ -12,7 +12,6 @@ import Data.List
 import Data.Maybe
 import GHC.Generics
 import Data.Map 
-import Data.Aeson (FromJSON, ToJSON)
 import Data.Foldable
 import Control.Concurrent.STM.TVar
 import Control.Concurrent.STM
@@ -34,7 +33,7 @@ import qualified Control.Monad.State.Lazy as Mtl
 
 type GameHub = TVar (Map GameId (TVar Game))
 
-newtype GameId = GameId Integer deriving (Num, Eq, Ord, Show, FromHttpApiData, Generic, ToJSON)
+newtype GameId = GameId Integer deriving (Num, Eq, Ord, Show, FromHttpApiData, Generic)
 
 data CurrentPlayerInfo m a where
     GetCurrentPlayerId :: CurrentPlayerInfo m PlayerId
@@ -48,8 +47,6 @@ data PlayerMoveInputError =
     MoveTooMuch RegionId 
     deriving (Show, Generic, Eq)
 
-instance FromJSON PlayerMoveInputError
-instance ToJSON PlayerMoveInputError
 instance Exception PlayerMoveInputError
 instance ErrStatus PlayerMoveInputError where
     toErrStatus _ = internalServerError500
@@ -57,8 +54,6 @@ instance ErrStatus PlayerMoveInputError where
 makeSem ''CurrentPlayerInfo
 
 newtype KeyNotFoundError k = KeyNotFoundError k deriving (Generic)
-instance FromJSON a => FromJSON (KeyNotFoundError a) 
-instance ToJSON a => ToJSON (KeyNotFoundError a)
 instance ErrStatus (KeyNotFoundError k) where
     toErrStatus _ = notFound404 
 
