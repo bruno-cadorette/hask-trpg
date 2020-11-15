@@ -10,7 +10,7 @@ type Direction =
   | Right
 type MovementState = 
     Idle
-  | Move Direction GameApi.RegionId
+  | Move Direction GameApi.Position
 
 
 movementClass : MovementState -> String

@@ -27,20 +27,20 @@ import Soldier
 import Debug.Trace
 
 data PlayerInputType = Movement | Attack  deriving(Generic, Show)
-data PlayerInput = PlayerInput { _inputType :: PlayerInputType, _origin :: RegionId, _destination :: RegionId } deriving (Generic, Show)
-data PossibleInput = PossibleInput PlayerInputType [RegionId] deriving (Show)
+data PlayerInput = PlayerInput { _inputType :: PlayerInputType, _origin :: Position, _destination :: Position } deriving (Generic, Show)
+data PossibleInput = PossibleInput PlayerInputType [Position] deriving (Show)
 
-getPossibleInputs :: Members '[ReadMapInfo, CurrentPlayerInfo, Error PlayerMoveInputError] r => RegionId -> Sem r [PossibleInput]
+getPossibleInputs :: Members '[ReadMapInfo, CurrentPlayerInfo, Error PlayerMoveInputError] r => Position -> Sem r [PossibleInput]
 getPossibleInputs regionId = do
   unit <- getPlayerUnit regionId
   let getTilesInRange selector = traverse getUnit $ extendedNeighboor ((soldier unit)^.selector) regionId
-  enemyRegions <- fmap getRegionId <$> filter (not . areAllies unit)  <$> rights <$> (getTilesInRange range)
+  enemyRegions <- fmap getPosition <$> filter (not . areAllies unit)  <$> rights <$> (getTilesInRange range)
   emptyRegions <- lefts <$> (getTilesInRange movement)
   return $ 
-    (if null emptyRegions then [] else [PossibleInput Movement (fmap getRegionId emptyRegions)]) ++ 
-    (if null enemyRegions then [] else [PossibleInput Attack (fmap getRegionId enemyRegions)])
+    (if null emptyRegions then [] else [PossibleInput Movement (fmap getPosition emptyRegions)]) ++ 
+    (if null enemyRegions then [] else [PossibleInput Attack (fmap getPosition enemyRegions)])
 
-getPlayerUnit :: Members '[ReadMapInfo, CurrentPlayerInfo, Error PlayerMoveInputError] r => RegionId -> Sem r TargetSoldier
+getPlayerUnit :: Members '[ReadMapInfo, CurrentPlayerInfo, Error PlayerMoveInputError] r => Position -> Sem r TargetSoldier
 getPlayerUnit regionId = do
     unit <- getUnit regionId
     playerId <- getCurrentPlayerId
@@ -51,25 +51,25 @@ getPlayerUnit regionId = do
 
 isSoldierMovingTooMuch :: (Region a, Region b, Soldier a) => a -> b -> Bool
 isSoldierMovingTooMuch a b = 
-    distance (getRegionId a) (getRegionId b) > (soldier a)^.movement
+    distance (getPosition a) (getPosition b) > (soldier a)^.movement
 
 
 isSoldierInRange :: (Soldier a, Region a, Region b) => a -> b -> Bool
 isSoldierInRange a b = 
-    distance (getRegionId a) (getRegionId b) <= (soldier a)^.range
+    distance (getPosition a) (getPosition b) <= (soldier a)^.range
 
 areAllies :: (Soldier a, Soldier b) => a -> b -> Bool
 areAllies s1 s2 = (soldier s1)^.faction == (soldier s2)^.faction 
 
 soldierMove :: Members '[Error PlayerMoveInputError, UnitAction] r => TargetSoldier -> EmptyRegion -> Sem r ()
 soldierMove soldier emptyRegion 
-    | isSoldierMovingTooMuch soldier emptyRegion = throw (MoveTooMuch $ getRegionId soldier )
+    | isSoldierMovingTooMuch soldier emptyRegion = throw (MoveTooMuch $ getPosition soldier )
     | otherwise = move soldier emptyRegion
 
 soldierAttack :: Members '[Error PlayerMoveInputError, UnitAction] r => TargetSoldier -> TargetSoldier -> Sem r ()
 soldierAttack attacker defender
-    | areAllies attacker defender = throw (AttackAllies (getRegionId attacker) (getRegionId defender))
-    | not $ isSoldierInRange attacker defender = throw (AttackTooFar (getRegionId attacker) (getRegionId defender))
+    | areAllies attacker defender = throw (AttackAllies (getPosition attacker) (getPosition defender))
+    | not $ isSoldierInRange attacker defender = throw (AttackTooFar (getPosition attacker) (getPosition defender))
     | otherwise = loseHP ((soldier attacker)^.attack) defender
 
 

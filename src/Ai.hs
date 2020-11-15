@@ -12,14 +12,14 @@ import Data.List.NonEmpty as NonEmpty
 
 -- This module, sadly, does not use any cool deep learning framework
 
-generateMove :: PlayerId -> Map RegionId SoldierUnit -> Maybe PlayerInput
+generateMove :: PlayerId -> Map Position SoldierUnit -> Maybe PlayerInput
 generateMove player = 
     fmap (NonEmpty.head) . nonEmpty . uncurry findMoves . bimap Map.keys Map.keys . Map.partition (\x -> player == x^.faction)
 
-findMoves :: [RegionId] -> [RegionId] -> [PlayerInput]
+findMoves :: [Position] -> [Position] -> [PlayerInput]
 findMoves aiMap enemies = fmap (\aiUnit -> PlayerInput Movement aiUnit (findDirection aiUnit $ findClosest aiUnit enemies)) aiMap
 
-findDirection (RegionId (o1, o2)) (RegionId (d1, d2)) = RegionId (o1 + dir o1 d1, o2 + dir o2 d2)
+findDirection (Position (o1, o2)) (Position (d1, d2)) = Position (o1 + dir o1 d1, o2 + dir o2 d2)
     where 
         dir a b
             | a > b = -1

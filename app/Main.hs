@@ -106,7 +106,7 @@ updateGameMap :: PlayerId -> PlayerInput -> GameMonad ()
 updateGameMap playerId moves = 
     runEverything playerId $ handlePlayerInput moves
 
-getPossibleInputs' playerId  x y = runEverything playerId $ traceShowId <$> getPossibleInputs (RegionId (x, y))
+getPossibleInputs' playerId  x y = runEverything playerId $ traceShowId <$> getPossibleInputs (Position (x, y))
 
 gameApi :: ServerT GameApi GameMonad
 gameApi = getGameState :<|> (\playerId -> runEverything playerId . handlePlayerInput) :<|>  getPossibleInputs' :<|> mapBorders

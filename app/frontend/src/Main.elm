@@ -52,8 +52,8 @@ isSelected x selection =
     SelectTwo a b _ -> a == x || b == x
 
 type alias Model = {
-    selection : Selection GameApi.RegionId,
-    units : Dict.Dict GameApi.RegionId SoldierModel,
+    selection : Selection GameApi.Position,
+    units : Dict.Dict GameApi.Position SoldierModel,
     error : String,
     playerId : Int,
     isMoving : Bool,
@@ -65,11 +65,11 @@ type alias SoldierModel = {
     soldierData : GameApi.SoldierUnit
   }
 type Msg = 
-    Select RegionId
+    Select Position
   | SelectAction PlayerInputType
   | ReceivePossibleActions (List PossibleInput)
-  | ReceiveUnits (Dict.Dict RegionId SoldierUnit)
-  | MoveSoldier (Maybe RegionId)
+  | ReceiveUnits (Dict.Dict Position SoldierUnit)
+  | MoveSoldier (Maybe Position)
   | SendReceiveUnitsCommand
   | SendCommand
   | ChangePlayerId String
@@ -77,9 +77,9 @@ type Msg =
   | Success
 
 receiveUnits : 
-  Dict.Dict GameApi.RegionId GameApi.SoldierUnit -> 
-  Dict.Dict GameApi.RegionId SoldierModel -> 
-  Dict.Dict GameApi.RegionId SoldierModel
+  Dict.Dict GameApi.Position GameApi.SoldierUnit -> 
+  Dict.Dict GameApi.Position SoldierModel -> 
+  Dict.Dict GameApi.Position SoldierModel
 receiveUnits serverDict localDict =
   let 
     newPositions = 
@@ -146,7 +146,7 @@ handleError f result =
     Err err -> Error (errorToString err)
     Ok x -> f x
 
-moveSoldiersCmd : Dict.Dict GameApi.RegionId SoldierModel -> Cmd Msg
+moveSoldiersCmd : Dict.Dict GameApi.Position SoldierModel -> Cmd Msg
 moveSoldiersCmd newUnits = 
   Process.sleep (1000) |> Task.perform (\_ -> MoveSoldier (findNextToMove newUnits))
 

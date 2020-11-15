@@ -39,12 +39,12 @@ data CurrentPlayerInfo m a where
     GetCurrentPlayerId :: CurrentPlayerInfo m PlayerId
 
 data PlayerMoveInputError =
-    NotPlayerOwned RegionId |
-    RegionOccupied RegionId |
-    RegionNotOccupied RegionId |
-    AttackAllies RegionId RegionId | 
-    AttackTooFar RegionId RegionId |
-    MoveTooMuch RegionId 
+    NotPlayerOwned Position |
+    RegionOccupied Position |
+    RegionNotOccupied Position |
+    AttackAllies Position Position | 
+    AttackTooFar Position Position |
+    MoveTooMuch Position 
     deriving (Show, Generic, Eq)
 
 instance Exception PlayerMoveInputError

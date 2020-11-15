@@ -28,14 +28,14 @@ jsonEncGameId  val = Json.Encode.int val
 
 
 
-type alias RegionId  = (Int, Int)
+type alias Position  = (Int, Int)
 
-jsonDecRegionId : Json.Decode.Decoder ( RegionId )
-jsonDecRegionId =
+jsonDecPosition : Json.Decode.Decoder ( Position )
+jsonDecPosition =
     Json.Decode.map2 tuple2 (Json.Decode.index 0 (Json.Decode.int)) (Json.Decode.index 1 (Json.Decode.int))
 
-jsonEncRegionId : RegionId -> Value
-jsonEncRegionId  val = (\(t1,t2) -> Json.Encode.list identity [(Json.Encode.int) t1,(Json.Encode.int) t2]) val
+jsonEncPosition : Position -> Value
+jsonEncPosition  val = (\(t1,t2) -> Json.Encode.list identity [(Json.Encode.int) t1,(Json.Encode.int) t2]) val
 
 
 
@@ -84,23 +84,23 @@ jsonEncPlayerId  val = Json.Encode.int val
 
 type alias PlayerInput  =
    { inputType: PlayerInputType
-   , origin: RegionId
-   , destination: RegionId
+   , origin: Position
+   , destination: Position
    }
 
 jsonDecPlayerInput : Json.Decode.Decoder ( PlayerInput )
 jsonDecPlayerInput =
    Json.Decode.succeed (\pinputType porigin pdestination -> {inputType = pinputType, origin = porigin, destination = pdestination})
    |> required "inputType" (jsonDecPlayerInputType)
-   |> required "origin" (jsonDecRegionId)
-   |> required "destination" (jsonDecRegionId)
+   |> required "origin" (jsonDecPosition)
+   |> required "destination" (jsonDecPosition)
 
 jsonEncPlayerInput : PlayerInput -> Value
 jsonEncPlayerInput  val =
    Json.Encode.object
    [ ("inputType", jsonEncPlayerInputType val.inputType)
-   , ("origin", jsonEncRegionId val.origin)
-   , ("destination", jsonEncRegionId val.destination)
+   , ("origin", jsonEncPosition val.origin)
+   , ("destination", jsonEncPosition val.destination)
    ]
 
 
@@ -123,71 +123,71 @@ jsonEncPlayerInputType  val =
 
 
 type PlayerMoveInputError  =
-    NotPlayerOwned RegionId
-    | RegionOccupied RegionId
-    | RegionNotOccupied RegionId
-    | AttackAllies RegionId RegionId
-    | AttackTooFar RegionId RegionId
-    | MoveTooMuch RegionId
+    NotPlayerOwned Position
+    | RegionOccupied Position
+    | RegionNotOccupied Position
+    | AttackAllies Position Position
+    | AttackTooFar Position Position
+    | MoveTooMuch Position
 
 jsonDecPlayerMoveInputError : Json.Decode.Decoder ( PlayerMoveInputError )
 jsonDecPlayerMoveInputError =
     let jsonDecDictPlayerMoveInputError = Dict.fromList
-            [ ("NotPlayerOwned", Json.Decode.lazy (\_ -> Json.Decode.map NotPlayerOwned (jsonDecRegionId)))
-            , ("RegionOccupied", Json.Decode.lazy (\_ -> Json.Decode.map RegionOccupied (jsonDecRegionId)))
-            , ("RegionNotOccupied", Json.Decode.lazy (\_ -> Json.Decode.map RegionNotOccupied (jsonDecRegionId)))
-            , ("AttackAllies", Json.Decode.lazy (\_ -> Json.Decode.map2 AttackAllies (Json.Decode.index 0 (jsonDecRegionId)) (Json.Decode.index 1 (jsonDecRegionId))))
-            , ("AttackTooFar", Json.Decode.lazy (\_ -> Json.Decode.map2 AttackTooFar (Json.Decode.index 0 (jsonDecRegionId)) (Json.Decode.index 1 (jsonDecRegionId))))
-            , ("MoveTooMuch", Json.Decode.lazy (\_ -> Json.Decode.map MoveTooMuch (jsonDecRegionId)))
+            [ ("NotPlayerOwned", Json.Decode.lazy (\_ -> Json.Decode.map NotPlayerOwned (jsonDecPosition)))
+            , ("RegionOccupied", Json.Decode.lazy (\_ -> Json.Decode.map RegionOccupied (jsonDecPosition)))
+            , ("RegionNotOccupied", Json.Decode.lazy (\_ -> Json.Decode.map RegionNotOccupied (jsonDecPosition)))
+            , ("AttackAllies", Json.Decode.lazy (\_ -> Json.Decode.map2 AttackAllies (Json.Decode.index 0 (jsonDecPosition)) (Json.Decode.index 1 (jsonDecPosition))))
+            , ("AttackTooFar", Json.Decode.lazy (\_ -> Json.Decode.map2 AttackTooFar (Json.Decode.index 0 (jsonDecPosition)) (Json.Decode.index 1 (jsonDecPosition))))
+            , ("MoveTooMuch", Json.Decode.lazy (\_ -> Json.Decode.map MoveTooMuch (jsonDecPosition)))
             ]
     in  decodeSumObjectWithSingleField  "PlayerMoveInputError" jsonDecDictPlayerMoveInputError
 
 jsonEncPlayerMoveInputError : PlayerMoveInputError -> Value
 jsonEncPlayerMoveInputError  val =
     let keyval v = case v of
-                    NotPlayerOwned v1 -> ("NotPlayerOwned", encodeValue (jsonEncRegionId v1))
-                    RegionOccupied v1 -> ("RegionOccupied", encodeValue (jsonEncRegionId v1))
-                    RegionNotOccupied v1 -> ("RegionNotOccupied", encodeValue (jsonEncRegionId v1))
-                    AttackAllies v1 v2 -> ("AttackAllies", encodeValue (Json.Encode.list identity [jsonEncRegionId v1, jsonEncRegionId v2]))
-                    AttackTooFar v1 v2 -> ("AttackTooFar", encodeValue (Json.Encode.list identity [jsonEncRegionId v1, jsonEncRegionId v2]))
-                    MoveTooMuch v1 -> ("MoveTooMuch", encodeValue (jsonEncRegionId v1))
+                    NotPlayerOwned v1 -> ("NotPlayerOwned", encodeValue (jsonEncPosition v1))
+                    RegionOccupied v1 -> ("RegionOccupied", encodeValue (jsonEncPosition v1))
+                    RegionNotOccupied v1 -> ("RegionNotOccupied", encodeValue (jsonEncPosition v1))
+                    AttackAllies v1 v2 -> ("AttackAllies", encodeValue (Json.Encode.list identity [jsonEncPosition v1, jsonEncPosition v2]))
+                    AttackTooFar v1 v2 -> ("AttackTooFar", encodeValue (Json.Encode.list identity [jsonEncPosition v1, jsonEncPosition v2]))
+                    MoveTooMuch v1 -> ("MoveTooMuch", encodeValue (jsonEncPosition v1))
     in encodeSumObjectWithSingleField keyval val
 
 
 
-type alias UnitPositions  = (List (RegionId, SoldierUnit))
+type alias UnitPositions  = (List (Position, SoldierUnit))
 
 jsonDecUnitPositions : Json.Decode.Decoder ( UnitPositions )
 jsonDecUnitPositions =
-    Json.Decode.list (Json.Decode.map2 tuple2 (Json.Decode.index 0 (jsonDecRegionId)) (Json.Decode.index 1 (jsonDecSoldierUnit)))
+    Json.Decode.list (Json.Decode.map2 tuple2 (Json.Decode.index 0 (jsonDecPosition)) (Json.Decode.index 1 (jsonDecSoldierUnit)))
 
 jsonEncUnitPositions : UnitPositions -> Value
-jsonEncUnitPositions  val = (Json.Encode.list (\(t1,t2) -> Json.Encode.list identity [(jsonEncRegionId) t1,(jsonEncSoldierUnit) t2])) val
+jsonEncUnitPositions  val = (Json.Encode.list (\(t1,t2) -> Json.Encode.list identity [(jsonEncPosition) t1,(jsonEncSoldierUnit) t2])) val
 
 
 
-type alias Borders  = (List (RegionId, (List RegionId)))
+type alias Borders  = (List (Position, (List Position)))
 
 jsonDecBorders : Json.Decode.Decoder ( Borders )
 jsonDecBorders =
-    Json.Decode.list (Json.Decode.map2 tuple2 (Json.Decode.index 0 (jsonDecRegionId)) (Json.Decode.index 1 (Json.Decode.list (jsonDecRegionId))))
+    Json.Decode.list (Json.Decode.map2 tuple2 (Json.Decode.index 0 (jsonDecPosition)) (Json.Decode.index 1 (Json.Decode.list (jsonDecPosition))))
 
 jsonEncBorders : Borders -> Value
-jsonEncBorders  val = (Json.Encode.list (\(t1,t2) -> Json.Encode.list identity [(jsonEncRegionId) t1,((Json.Encode.list jsonEncRegionId)) t2])) val
+jsonEncBorders  val = (Json.Encode.list (\(t1,t2) -> Json.Encode.list identity [(jsonEncPosition) t1,((Json.Encode.list jsonEncPosition)) t2])) val
 
 
 
 type PossibleInput  =
-    PossibleInput PlayerInputType (List RegionId)
+    PossibleInput PlayerInputType (List Position)
 
 jsonDecPossibleInput : Json.Decode.Decoder ( PossibleInput )
 jsonDecPossibleInput =
-    Json.Decode.lazy (\_ -> Json.Decode.map2 PossibleInput (Json.Decode.index 0 (jsonDecPlayerInputType)) (Json.Decode.index 1 (Json.Decode.list (jsonDecRegionId))))
+    Json.Decode.lazy (\_ -> Json.Decode.map2 PossibleInput (Json.Decode.index 0 (jsonDecPlayerInputType)) (Json.Decode.index 1 (Json.Decode.list (jsonDecPosition))))
 
 
 jsonEncPossibleInput : PossibleInput -> Value
 jsonEncPossibleInput (PossibleInput v1 v2) =
-    Json.Encode.list identity [jsonEncPlayerInputType v1, (Json.Encode.list jsonEncRegionId) v2]
+    Json.Encode.list identity [jsonEncPlayerInputType v1, (Json.Encode.list jsonEncPosition) v2]
 
 
 getUnitpositions : (Result Http.Error  (UnitPositions)  -> msg) -> Cmd msg

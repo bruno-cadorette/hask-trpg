@@ -59,7 +59,7 @@ type GameApi =
     
 $(deriveBoth (Elm.defaultOptionsDropLower 1) ''SoldierUnit)
 $(deriveBoth (Elm.defaultOptionsDropLower 1) ''GameId)
-$(deriveBoth (Elm.defaultOptionsDropLower 1) ''RegionId)
+$(deriveBoth (Elm.defaultOptionsDropLower 1) ''Position)
 $(deriveBoth (Elm.defaultOptionsDropLower 1) ''KeyNotFoundError)
 $(deriveBoth (Elm.defaultOptionsDropLower 1) ''PlayerId)
 $(deriveBoth (Elm.defaultOptionsDropLower 1) ''PlayerInput)
@@ -71,7 +71,7 @@ $(deriveBoth (Elm.defaultOptionsDropLower 1) ''PossibleInput)
 
 elmTypes = [
     DefineElm (Proxy :: Proxy GameId), 
-    DefineElm (Proxy :: Proxy RegionId), 
+    DefineElm (Proxy :: Proxy Position), 
     DefineElm (Proxy :: Proxy SoldierUnit), 
     DefineElm (Proxy :: Proxy PlayerId),
     DefineElm (Proxy :: Proxy PlayerInput),
