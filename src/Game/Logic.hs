@@ -28,13 +28,14 @@ import Debug.Trace
 
 data PlayerInputType = Movement | Attack  deriving(Generic, Show)
 data PlayerInput = PlayerInput { _inputType :: PlayerInputType, _origin :: RegionId, _destination :: RegionId } deriving (Generic, Show)
-data PossibleInput = PossibleInput PlayerInputType [RegionId]
+data PossibleInput = PossibleInput PlayerInputType [RegionId] deriving (Show)
 
 getPossibleInputs :: Members '[ReadMapInfo, CurrentPlayerInfo, Error PlayerMoveInputError] r => RegionId -> Sem r [PossibleInput]
 getPossibleInputs regionId = do
   unit <- getPlayerUnit regionId
-  (emptyRegions, occupiedRegions) <- fmap partitionEithers $ traverse getUnit $ extendedNeighboor ((soldier unit)^.range) regionId
-  let enemyRegions = filter (areAllies unit) occupiedRegions
+  let getTilesInRange selector = traverse getUnit $ extendedNeighboor ((soldier unit)^.selector) regionId
+  enemyRegions <- fmap getRegionId <$> filter (not . areAllies unit)  <$> rights <$> (getTilesInRange range)
+  emptyRegions <- lefts <$> (getTilesInRange movement)
   return $ 
     (if null emptyRegions then [] else [PossibleInput Movement (fmap getRegionId emptyRegions)]) ++ 
     (if null enemyRegions then [] else [PossibleInput Attack (fmap getRegionId enemyRegions)])

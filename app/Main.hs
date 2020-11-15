@@ -64,9 +64,13 @@ type GameMonad = Sem '[Reader (TVar Game), Embed STM]
 
 runErrors :: 
     Sem (Error PlayerMoveInputError ': r) a -> 
-    Sem r (Envelope '[PlayerMoveInputError] a)
-runErrors = runErrorToEnv @PlayerMoveInputError
-
+    Sem r a
+runErrors eff = do 
+    err <- runError eff
+    case err of 
+      Right x -> return x
+      Left x -> 
+        traceShow x undefined
 ignoreErrors ::
     Monoid a =>
     Sem (Error PlayerMoveInputError ': r) a -> 
@@ -98,11 +102,11 @@ updateAi = runStateAsReaderTVar $ runErrors $ runPlayerActions $ do
 runEverything playerId = 
   runStateAsReaderTVar . runErrors . runPlayerActions . runReader @PlayerId playerId . runCurrentPlayerInfo
 
-updateGameMap :: PlayerId -> PlayerInput -> GameMonad (Envelope '[PlayerMoveInputError] ())
+updateGameMap :: PlayerId -> PlayerInput -> GameMonad ()
 updateGameMap playerId moves = 
     runEverything playerId $ handlePlayerInput moves
 
-getPossibleInputs' playerId  x y = runEverything playerId $ getPossibleInputs (RegionId (x, y))
+getPossibleInputs' playerId  x y = runEverything playerId $ traceShowId <$> getPossibleInputs (RegionId (x, y))
 
 gameApi :: ServerT GameApi GameMonad
 gameApi = getGameState :<|> (\playerId -> runEverything playerId . handlePlayerInput) :<|>  getPossibleInputs' :<|> mapBorders

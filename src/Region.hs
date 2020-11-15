@@ -126,4 +126,4 @@ borders x y = Borders $ fromList $ neighboor x y <$> allRegionRegionId (,) x y
 findClosest :: RegionId -> [RegionId] -> RegionId
 findClosest origin = minimumBy (comparing (distance origin))
 
-extendedNeighboor n r = tail $ nub $ concat $ Data.List.take n $ iterate (concatMap directNeighboor) [r]
+extendedNeighboor n r = tail $ nub $ concat $ Data.List.take (n + 1) $ iterate (concatMap directNeighboor) [r]

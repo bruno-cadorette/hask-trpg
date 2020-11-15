@@ -53,8 +53,8 @@ type CaptureCoordinate = Capture "x" Int :> Capture "y" Int
 
 type GameApi = 
   "unitpositions" :> Get '[JSON] UnitPositions :<|>
-  ("playeraction" :> Capture "playerId" PlayerId :> Throws PlayerMoveInputError :> ReqBody '[JSON] PlayerInput :> Post '[JSON] ()) :<|>
-  ("possibleactions" :> Capture "playerId" PlayerId :> Throws PlayerMoveInputError :> Capture "x" Int :> Capture "y" Int :> Get '[JSON] [PossibleInput]) :<|>
+  ("playeraction" :> Capture "playerId" PlayerId :> ReqBody '[JSON] PlayerInput :> Post '[JSON] ()) :<|>
+  ("possibleactions" :> Capture "playerId" PlayerId :> Capture "x" Int :> Capture "y" Int :> Get '[JSON] [PossibleInput]) :<|>
   "borders" :> Get '[JSON] Borders
     
 $(deriveBoth (Elm.defaultOptionsDropLower 1) ''SoldierUnit)
